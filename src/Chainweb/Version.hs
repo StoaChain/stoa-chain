@@ -547,6 +547,7 @@ instance Ord ChainwebVersion where
         , _versionCheats v `compare` _versionCheats v'
         , _versionVerifierPluginNames v `compare` _versionVerifierPluginNames v'
         , _versionForkNumber v `compare` _versionForkNumber v'
+        , _versionSpvProofRootValidWindow v `compare` _versionSpvProofRootValidWindow v'
         ]
 
 instance Eq ChainwebVersion where
