@@ -129,4 +129,5 @@ recapDevnet = ChainwebVersion
         Bottom (minBound, mempty)
     , _versionQuirks = noQuirks
     , _versionForkNumber = 0
+    , _versionForkVoteCastingLength = 120 * 119 -- 5 days
     }

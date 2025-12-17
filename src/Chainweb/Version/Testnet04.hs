@@ -200,4 +200,5 @@ testnet04 = ChainwebVersion
             ]
         }
     , _versionForkNumber = 0
+    , _versionForkVoteCastingLength = 120 * 119 -- 5 days
     }
