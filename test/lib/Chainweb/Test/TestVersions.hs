@@ -490,6 +490,10 @@ pact5InstantCpmTestVersion g = buildTestVersion $ \v -> v
             , Set.fromList $ map VerifierName ["allow", "hyperlane_v3_announcement", "hyperlane_v3_message","signed_list"]
             )
         )
+    & versionSpvProofRootValidWindow .~
+        ( (ForkAtBlockHeight $ BlockHeight 5, Nothing) `Above`
+            Bottom (minBound, Just 20)
+        )
 
 pact53TransitionCpmTestVersion :: ChainGraph -> ChainwebVersion
 pact53TransitionCpmTestVersion g = buildTestVersion $ \v -> v
