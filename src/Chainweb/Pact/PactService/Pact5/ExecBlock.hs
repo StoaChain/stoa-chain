@@ -575,7 +575,7 @@ execExistingBlock
   -> CheckablePayload
   -> PactBlockM logger tbl (P.Gas, PayloadWithOutputs)
 execExistingBlock currHeader payload = do
-  parentBlockHeader <- view psParentHeader
+  parentBlockHeader <- _parentHeader <$> view psParentHeader
   let plData = checkablePayloadToPayloadData payload
   miner :: Miner <- decodeStrictOrThrow (_minerData $ view payloadDataMiner plData)
   txs <- liftIO $ pact5TransactionsFromPayload plData
@@ -588,7 +588,7 @@ execExistingBlock currHeader payload = do
   isGenesis <- view psIsGenesis
   blockHandlePreCoinbase <- use pbBlockHandle
   let
-    txValidationTime = ParentCreationTime (view blockCreationTime $ _parentHeader parentBlockHeader)
+    txValidationTime = ParentCreationTime (parentBlockHeader ^. blockCreationTime)
   errors <- liftIO $ flip foldMap txs $ \tx -> do
     errorOrSuccess <- runExceptT $
       validateParsedChainwebTx logger v cid db blockHandlePreCoinbase txValidationTime
@@ -610,7 +610,7 @@ execExistingBlock currHeader payload = do
   postCoinbaseBlockHandle <- use pbBlockHandle
 
   let blockGasLimit =
-        Pact5.GasLimit . Pact5.Gas . fromIntegral <$> maxBlockGasLimit v (view blockHeight currHeader)
+        Pact5.GasLimit . Pact5.Gas . fromIntegral <$> maxBlockGasLimit v (parentBlockHeader ^. blockForkNumber) (currHeader ^. blockHeight)
 
   env <- ask
   (V.fromList -> results, (finalHandle, _finalBlockGasLimit)) <-

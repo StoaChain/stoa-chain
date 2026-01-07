@@ -378,7 +378,11 @@ spvExpirationTest baseRdb _step = runResourceT $ do
         -- more than sufficient for the target chain to be aware of the source xchain transfer.
         let waitBlocks :: Integral a => a
             waitBlocks = 10
-        let expirationWindow = fromMaybe (error "missing minimumBlockHeaderHistory") (minimumBlockHeaderHistory v maxBound)
+        -- the choice of minBound here is a bit arbitrary. but in the "expiry
+        -- disabled" case, we definitely don't want to use maxBound.
+        let expirationWindow = fromMaybe
+                (error "missing minimumBlockHeaderHistory")
+                (minimumBlockHeaderHistory v minBound minBound)
         when (int expirationWindow < waitBlocks + diameter (chainGraphAt v maxBound)) $ assertFailure "test version has a minimumBlockHeaderHistory that is too short to test"
 
         replicateM_ waitBlocks $ advanceAllChains_ fx
