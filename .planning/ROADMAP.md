@@ -60,11 +60,11 @@ Plans:
   2. The Ea tool successfully generates Haskell genesis payload modules with hash-verified data, and the project compiles with these modules included
   3. Chain 0 genesis includes UR-STOA token (1M supply) minted, UrStoa Vault initialized with foundation account, and 16M STOA genesis supply minted to foundation account
   4. The bundled interfaces plus coin module fit within the genesis block gas budget (verified by Ea tool execution without gas exhaustion)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Create genesis YAML files and Ea tool Genesis records for Stoa (GENS-01, GENS-02)
+- [ ] 03-02-PLAN.md — Run Ea tool, wire generated payloads into Stoa version, verify build (GENS-03, GENS-04, GENS-05, GENS-06, GENS-07)
 
 ### Phase 4: Tokenomics
 **Goal**: STOA-specific miner rewards are defined with a declining emission schedule that correctly divides by 10 chains, and the 90/10 miner/vault split operates correctly
