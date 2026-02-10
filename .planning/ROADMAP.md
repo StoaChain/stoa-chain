@@ -13,7 +13,7 @@ Stoa Chain transforms the existing Kadena Chainweb Node (v2.32.0) into a new blo
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Contract Verification** - Verify STOA coin contract works correctly in Pact REPL before any integration
-- [ ] **Phase 2: Version Definition and Gas Limits** - Create Stoa version with 10-chain Petersen graph and updated gas configuration
+- [x] **Phase 2: Version Definition and Gas Limits** - Create Stoa version with 10-chain Petersen graph and updated gas configuration
 - [ ] **Phase 3: Genesis Payload Generation** - Generate genesis payloads for chain 0 (full init) and chains 1-9 (coin only) via Ea tool
 - [ ] **Phase 4: Tokenomics** - Create STOA miner rewards CSV with declining emissions and update hash constants
 - [ ] **Phase 5: Integration and Validation** - Build, boot, mine, and validate cross-chain operations on all 10 chains
@@ -48,8 +48,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Create Stoa version definition module with Petersen graph, all forks at genesis, and 500k gas limit (VERS-01, VERS-02, VERS-03, VERS-04, GAS-01)
-- [ ] 02-02-PLAN.md — Wire Stoa into Registry, Configuration, and cabal; set 400k gas default; verify compilation (VERS-05, VERS-06, GAS-02, GAS-03)
+- [x] 02-01-PLAN.md — Create Stoa version definition module with Petersen graph, all forks at genesis, and 500k gas limit (VERS-01, VERS-02, VERS-03, VERS-04, GAS-01)
+- [x] 02-02-PLAN.md — Wire Stoa into Registry, Configuration, and cabal; set 400k gas default; verify compilation (VERS-05, VERS-06, GAS-02, GAS-03)
 
 ### Phase 3: Genesis Payload Generation
 **Goal**: Genesis payloads are generated via the Ea tool for all 10 chains, with chain 0 containing the full STOA + UR-STOA + vault initialization and chains 1-9 containing coin module deployment only
@@ -103,7 +103,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Contract Verification | 2/2 | COMPLETE | 2026-02-10 |
-| 2. Version Definition and Gas Limits | 0/2 | PLANNED | - |
+| 2. Version Definition and Gas Limits | 2/2 | COMPLETE | 2026-02-11 |
 | 3. Genesis Payload Generation | 0/2 | Not started | - |
 | 4. Tokenomics | 0/1 | Not started | - |
 | 5. Integration and Validation | 0/2 | Not started | - |
