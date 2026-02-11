@@ -1,0 +1,16 @@
+[Unit]
+Description=Stoa Chain Node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=stoa
+Group=stoa
+ExecStart=/usr/local/bin/run-stoa.sh
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
