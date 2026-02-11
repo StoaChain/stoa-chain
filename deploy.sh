@@ -7,9 +7,11 @@ set -euo pipefail
 # Run as: root (or sudo)
 ###############################################################################
 
+export DEBIAN_FRONTEND=noninteractive
+
 echo "=== [1/7] System dependencies ==="
-apt update && apt upgrade -y
-apt install -y \
+apt update && apt upgrade -y -o Dpkg::Options::="--force-confold"
+apt install -y -o Dpkg::Options::="--force-confold" \
   build-essential curl libffi-dev libgmp-dev libncurses-dev \
   libssl-dev libtinfo-dev zlib1g-dev pkg-config git \
   librocksdb-dev libsnappy-dev libbz2-dev liblz4-dev libzstd-dev
