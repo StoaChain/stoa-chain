@@ -1,7 +1,7 @@
 codeFile: ../../namespaces/ns-install.pact
 data:
-  ns-admin-keyset: ["7f22e4f9dbbffc2ed2a92cfec194c9d1ca60df0f9464ef2960d8c437eb5e0ad5"]
-  ns-operate-keyset: ["7f22e4f9dbbffc2ed2a92cfec194c9d1ca60df0f9464ef2960d8c437eb5e0ad5"]
+  ns-admin-keyset: ["1a4e15d3c51e0b73e92644600487ba8eaae312e1a178b91801d54e13c1b350a5"]
+  ns-operate-keyset: ["1a4e15d3c51e0b73e92644600487ba8eaae312e1a178b91801d54e13c1b350a5"]
   ns-genesis-keyset:
     keys: []
     pred: "="

@@ -7,12 +7,12 @@ code: |-
   (define-keyset "stoa-ns.stoa_master_six" (read-keyset "stoa-ns.stoa_master_six"))
   (define-keyset "stoa-ns.stoa_master_seven" (read-keyset "stoa-ns.stoa_master_seven"))
 data:
-  stoa-ns.stoa_master_one: ["7f22e4f9dbbffc2ed2a92cfec194c9d1ca60df0f9464ef2960d8c437eb5e0ad5"]
-  stoa-ns.stoa_master_two: ["b6fb042fef8552d28611df06f6c9569a31c84701686a53db21534ce7d86df59a"]
-  stoa-ns.stoa_master_three: ["34d597f388d834a1cf521a0684fb5c0902782a6240c51a6bbb7c240b4f32b14b"]
-  stoa-ns.stoa_master_four: ["57aa6d2d4d2756e2ab9b19253f5edc7d1af3c7497be4f3cb0de39c4fda29897c"]
-  stoa-ns.stoa_master_five: ["265b064bcf006201c05d3f1f4d91742c96290b1249efdde84d9b4ec280b84ffc"]
-  stoa-ns.stoa_master_six: ["e26d295df86b8f5a157fc229c7b84acc9694ac6854a8c93ff02d0aa930315cc2"]
-  stoa-ns.stoa_master_seven: ["d43ff9092841de822a60dfdce837ab3b7682d97eab7838651ddbc2fc8d258b46"]
+  stoa-ns.stoa_master_one: ["1a4e15d3c51e0b73e92644600487ba8eaae312e1a178b91801d54e13c1b350a5"]
+  stoa-ns.stoa_master_two: ["10e05871c5a2ef3f0f7dca9edd8e96e4ef0952175a4a2621895d2c4402a7b56a"]
+  stoa-ns.stoa_master_three: ["b836c5c6b989d97737c954934c24686b876b78082bd03475878c245794d6ef80"]
+  stoa-ns.stoa_master_four: ["1f6398b1f501992a470efc27707c1b3980f55e602d79755ccdd87afc2b7f03ee"]
+  stoa-ns.stoa_master_five: ["d80ff2efd92ebbf9ca367b4985952c2955e85f9e706bcb0745b2e0492dfe3af3"]
+  stoa-ns.stoa_master_six: ["af924c2521f207c57360399acff3879f37e8120ccf85ec80fc8cd40667a2fecd"]
+  stoa-ns.stoa_master_seven: ["2643aaa44db9b8d92c295a2b4ea9400f2946691130d62e4f461a85f266a58052"]
 nonce: stoa-keysets
 keyPairs: []
