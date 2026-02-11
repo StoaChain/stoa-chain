@@ -43,7 +43,7 @@ stoa = ChainwebVersion
     , _versionBootstraps = []
     , _versionGenesis = VersionGenesis
         { _genesisBlockTarget = AllChains $ HashTarget (maxBound `div` 100_000)
-        , _genesisTime = AllChains $ BlockCreationTime [timeMicrosQQ| 2026-03-01T00:00:00.000000 |]
+        , _genesisTime = AllChains $ BlockCreationTime [timeMicrosQQ| 2026-02-01T00:00:00.000000 |]
         , _genesisBlockPayload = onChains $ concat
             [ [(unsafeChainId 0, S0.payloadBlock)]
             , [(unsafeChainId i, SN.payloadBlock) | i <- [1..9]]
