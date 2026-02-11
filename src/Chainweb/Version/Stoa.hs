@@ -15,6 +15,7 @@ import Chainweb.BlockCreationTime
 import Chainweb.ChainId
 import Chainweb.Difficulty
 import Chainweb.Graph
+import Chainweb.HostAddress
 import Chainweb.Time
 import Chainweb.Utils
 import Chainweb.Utils.Rule
@@ -40,7 +41,8 @@ stoa = ChainwebVersion
     , _versionBlockDelay = BlockDelay 30_000_000
     , _versionWindow = WindowWidth 120
     , _versionHeaderBaseSizeBytes = 318 - 110
-    , _versionBootstraps = []
+    , _versionBootstraps = domainAddr2PeerInfo
+        [unsafeHostAddressFromText "129.212.143.119:1789"]
     , _versionGenesis = VersionGenesis
         { _genesisBlockTarget = AllChains $ HashTarget (maxBound `div` 100_000)
         , _genesisTime = AllChains $ BlockCreationTime [timeMicrosQQ| 2026-02-01T00:00:00.000000 |]
@@ -54,12 +56,12 @@ stoa = ChainwebVersion
     , _versionMaxBlockGasLimit = Bottom (minBound, Just 500_000)
     , _versionMinimumBlockHeaderHistory = Bottom (minBound, Nothing)
     , _versionCheats = VersionCheats
-        { _disablePow = True
+        { _disablePow = False
         , _fakeFirstEpochStart = True
         , _disablePact = False
         }
     , _versionDefaults = VersionDefaults
-        { _disablePeerValidation = True
+        { _disablePeerValidation = False
         , _disableMempoolSync = False
         }
     , _versionVerifierPluginNames = AllChains $ Bottom
