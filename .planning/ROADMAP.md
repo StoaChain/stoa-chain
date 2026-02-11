@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Contract Verification** - Verify STOA coin contract works correctly in Pact REPL before any integration
 - [x] **Phase 2: Version Definition and Gas Limits** - Create Stoa version with 10-chain Petersen graph and updated gas configuration
 - [x] **Phase 3: Genesis Payload Generation** - Generate genesis payloads for chain 0 (full init) and chains 1-9 (coin only) via Ea tool
-- [ ] **Phase 4: Tokenomics** - Create STOA miner rewards CSV with declining emissions and update hash constants
+- [x] **Phase 4: Tokenomics** - Create STOA miner rewards CSV with declining emissions and update hash constants
 - [ ] **Phase 5: Integration and Validation** - Build, boot, mine, and validate cross-chain operations on all 10 chains
 
 ## Phase Details
@@ -74,10 +74,11 @@ Plans:
   1. A STOA miner rewards CSV exists with declining emission schedule entries, and SHA512 hash constants (raw and parsed) are updated to match the new CSV
   2. Reward calculation at runtime correctly divides by 10-chain count (not 20), producing expected per-block rewards at genesis, year 1, and year 10
   3. The 90/10 miner/vault emission split is implemented such that 10% of each block's coinbase emission is directed to the UR-STOA vault on chain 0
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [x] 04-01-PLAN.md — Generate STOA miner rewards CSV, update SHA512 hash constants, verify 10-chain division (TOKN-01, TOKN-02, TOKN-03)
+- [x] 04-02-PLAN.md — Verify 90/10 emission split and UR-STOA vault injection via Pact REPL at multiple year checkpoints (TOKN-04, TOKN-05)
 
 ### Phase 5: Integration and Validation
 **Goal**: The complete Stoa node compiles, boots from genesis, mines blocks on all 10 chains, and validates cross-chain operations end-to-end
@@ -105,5 +106,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Contract Verification | 2/2 | COMPLETE | 2026-02-10 |
 | 2. Version Definition and Gas Limits | 2/2 | COMPLETE | 2026-02-11 |
 | 3. Genesis Payload Generation | 2/2 | COMPLETE | 2026-02-11 |
-| 4. Tokenomics | 0/1 | Not started | - |
+| 4. Tokenomics | 2/2 | COMPLETE | 2026-02-11 |
 | 5. Integration and Validation | 0/2 | Not started | - |
