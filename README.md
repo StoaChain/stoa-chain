@@ -1,443 +1,227 @@
-**NOTE**: The Kadena Mainnet stopped producing blocks on 2025-11-15T23:26:15Z.
-The final cut is
-
-```json
-{
-  "hashes": {
-    "0": {
-      "height": 6357351,
-      "hash": "CNHrpXbArOLo_cgVHt2uxR9MfNtp_1XFmeQEwM9T-_k"
-    },
-    "1": {
-      "height": 6357350,
-      "hash": "iNNoM2Q9u4YmyK0b2pDHcnCHIkW23kbPQhCOT1zxQiA"
-    },
-    "2": {
-      "height": 6357351,
-      "hash": "3Kzxjmlr3v_y-HXojOOZUf-vDd4DsX_egHMIm6eelmo"
-    },
-    "3": {
-      "height": 6357350,
-      "hash": "uRdnAnLhZ4Qc3E_yD5XeSmh_tEU0Wo0wSZl01UAlji8"
-    },
-    "4": {
-      "height": 6357352,
-      "hash": "Jvvh057gHVx4G_9yk0MysTdz7mMcW3ceFCByIy6s0js"
-    },
-    "5": {
-      "height": 6357351,
-      "hash": "Bgn1kKV-ecYytVWzHvM-sqOjryfeznpbOX6DPw8zwdM"
-    },
-    "6": {
-      "height": 6357351,
-      "hash": "_5_sGzH0zVUQA5ca5q2Gv3Oyx0YgwSLrz_pjXBDg-ME"
-    },
-    "7": {
-      "height": 6357352,
-      "hash": "_Ls_T4m_cx69betxqwzWctKE4mB0eA893xVUjCMQRe0"
-    },
-    "8": {
-      "height": 6357351,
-      "hash": "uaEJWHmeURrAN1NfQnbOn2kWOur_MdADLRzsJ7LXHbU"
-    },
-    "9": {
-      "height": 6357352,
-      "hash": "zAuqJpSTj-ZRCfgv1ENnLaw4CVGlGmIHXWQUvoW3d9Q"
-    },
-    "10": {
-      "height": 6357351,
-      "hash": "BdtBPGPtQwtNSmNhxcfhRkg7kveo6rT3vFBnLiVUZbo"
-    },
-    "11": {
-      "height": 6357351,
-      "hash": "fbnLuG-dRWyBbJlT8d0o2oM5JNegZMiT7g0gjUpx3bo"
-    },
-    "12": {
-      "height": 6357352,
-      "hash": "cUJMScJO6dzqsZA2zSmXGJM01vxBjqsdpZAIqQch-tM"
-    },
-    "13": {
-      "height": 6357351,
-      "hash": "WNFyaTjQZ6c0_b67AQ5u3FsvPFvNt9YOhoBCIikjwp0"
-    },
-    "14": {
-      "height": 6357351,
-      "hash": "gelSWQWTFe62OG3064wvLEB81hHB7oUeYm5u04Zyi64"
-    },
-    "15": {
-      "height": 6357350,
-      "hash": "6jaP_ipxnGKla0-2wuXRYjf2mzc2ZsrBP9Yv18zy4WE"
-    },
-    "16": {
-      "height": 6357349,
-      "hash": "CJB2_VHPSQBBa50ki0lgE4HX4RUbL4h8wkxK9Z6CFUw"
-    },
-    "17": {
-      "height": 6357350,
-      "hash": "kcahBEUEON_j7gYscOdayHd773JU_tzGBX_FJjmriGk"
-    },
-    "18": {
-      "height": 6357351,
-      "hash": "S4jq2NbsLR57mdSXR3XLJ2_qLrVvGOsOqvlNEW-cnGc"
-    },
-    "19": {
-      "height": 6357352,
-      "hash": "t8tjoZ-rfr0yUIpbLKqgOQjRO3hYFDEWOwgY5n9taXQ"
-    }
-  },
-  "origin": null,
-  "weight": "JhaBsLA6L5pAdy4AAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-  "height": 127147019,
-  "instance": "mainnet01",
-  "id": "PY1Vz7vpwsAzEnIr5Z_pOQGIRm-ZWuYv_u9_o1OLZ94"
-}
-```
+# StoaChain
 
 <p align="center">
-<img src="https://i.imgur.com/bAZFAGF.png" width="450" height="243" alt="Kadena" title="Kadena">
+<img src="assets/StoaLogo.png" width="200" height="200" alt="StoaChain Logo" title="StoaChain">
 </p>
 
-<p>&nbsp;</p>
+<h3 align="center">A Proof-of-Work Parallel-Chain Protocol</h3>
 
-# Kadena Public Blockchain
+> **StoaChain** is a blockchain built on Kadena's Chainweb protocol. This repository is the **node implementation** — a **software fork** of [`kadena-io/chainweb-node`](https://github.com/kadena-io/chainweb-node) that runs as its own independent blockchain with its own genesis (2026-02-23). It is **not a chain fork** of Kadena: it shares no ledger history with Kadena's mainnet.
 
-Kadena is a fast, secure, and scalable blockchain using the Chainweb consensus
-protocol. Chainweb is a braided, parallelized Proof Of Work consensus mechanism
-that improves throughput and scalability in executing transactions on the
-blockchain while maintaining the security and integrity found in Bitcoin.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Built with Haskell](https://img.shields.io/badge/Built%20with-Haskell-5e5086.svg)](https://www.haskell.org/)
+[![Pact Version](https://img.shields.io/badge/Pact-5.4-blue.svg)](https://pact-language.readthedocs.io/)
 
-Read our [whitepapers](https://www.kadena.io/whitepapers):
-
-- [Chainweb: A Proof-of-Work Parallel-Chain Architecture for Massive Throughput](https://d31d887a-c1e0-47c2-aa51-c69f9f998b07.filesusr.com/ugd/86a16f_029c9991469e4565a7c334dd716345f4.pdf)
-- [Agent-based Simulations of Blockchain Protocols illustrated via Kadena's *Chainweb*](https://d31d887a-c1e0-47c2-aa51-c69f9f998b07.filesusr.com/ugd/86a16f_3b2d0c58179d4edd9df6df4d55d61dda.pdf)
-
-For additional information, press, and development inquiries, please refer to the Kadena [website](https://kadena.io)
+---
 
 ## Table of Contents
 
-- [Kadena Docs Site](#docs)
-- [Installing Chainweb](#installing-chainweb)
-- [Bootstrap Nodes](#bootstrap-nodes)
-- [Configuring, running, and monitoring the health of a Chainweb Node](#configuring-running-and-monitoring-the-health-of-a-chainweb-node)
-- [Mining for a Chainweb Network](#mine-for-a-chainweb-network)
-- [Chainweb Design](#chainweb-design)
-  - [Component Structure Details](#component-structure)
-  - [Architecture Overview](#architecture-overview)
+- [Overview](#overview)
+- [Live Network](#live-network)
+- [Building From Source](#building-from-source)
+- [Running a Node](#running-a-node)
+- [Repository Layout](#repository-layout)
+- [Key Code Entry Points](#key-code-entry-points)
+- [Key Differences from Chainweb-Node](#key-differences-from-chainweb-node)
+- [Tests](#tests)
+- [Documentation](#documentation)
+- [License](#license)
+- [Development Method](#development-method)
 
-## Docs
+---
 
-The Kadena Docs site, which can be found [here](https://kadena-io.github.io/kadena-docs/) serves as a source of information about Kadena. You can find information about how to interact with the public chain, including how to get keys, view network activity, explore blocks, etc. [here](https://kadena-io.github.io/kadena-docs/Public-Chain-Docs).
+## Overview
 
-If you have additions or comments, please submit a pull request or raise an issue - the GitHub project can be found [here](https://github.com/kadena-io/kadena-docs)
+StoaChain is a **braided, parallelized Proof-of-Work blockchain** built on the Chainweb consensus protocol. Relative to upstream `chainweb-node`, this repo carries:
 
-## Installing Chainweb
+- A new `ChainwebVersion` named `stoa` — single network, 10 chains, Petersen graph, 30-second block delay
+- A new genesis (`2026-02-23T18:00:00Z`) with 16,000,000 STOA and 1,000,000 URSTOA pre-minted on Chain 0
+- Raised block gas limits: **1.6M default / 2M max** (vs upstream 150k/180k)
+- A replacement coin module at [`pact/stoa-coin/new-coin.pact`](pact/stoa-coin/new-coin.pact) that computes emission inside Pact (`coin.URC_Emissions`) and defines both STOA and URSTOA
+- `stoa-ns`-namespaced interfaces (`stoic-fungible-v1`, `stoic-xchain`, `stoic-predicates`, etc.)
 
-Minimal recommended hardware requirements for nodes are:
+**Pact version.** The live chain runs **stock upstream Pact 5.4** — no fork, no `chain-data` extensions. The node code still carries Pact 4 infrastructure under `src/Chainweb/Pact4/` (extraction was attempted and abandoned because Pact 4 and Pact 5 share code paths). Document both facts wherever Pact version comes up: code retains Pact 4 infra, live chain runs 5.4.
 
-* 2 CPU cores
-* 4 GB of RAM
-* 250 GB SSD or fast HDD
-* Public IP address
+---
 
-If the node is also used as API server for Pact, mining, or chainweb-data: 4 CPU cores and 8GB of RAM.
+## Live Network
 
-### Docker (all batteries included)
+| Property | Value |
+|----------|-------|
+| **Network** | `stoa` (single network — no separate testnet/devnet) |
+| **Version code** | `0x0000000A` (= 10) |
+| **Chains** | 10 (Petersen graph, degree-3) |
+| **Block delay** | 30 seconds |
+| **Genesis time** | `2026-02-23T18:00:00.000000Z` |
+| **CLI flag** | `--chainweb-version stoa` |
 
-A docker image is available from
-[here](https://hub.docker.com/r/kadena/chainweb-node) and can be used with
-the following commands:
+### Public nodes
 
-```shell
-# Initialize the database (optional, but avoids several hours of initial db synchronization)
-docker run -ti --rm -v chainweb-db:/root/.local/share/chainweb-node/mainnet01/0/ kadena/chainweb-node /chainweb/initialize-db.sh
-```
+| URL | Role |
+|-----|------|
+| `https://node1.stoachain.com` | Public HTTPS endpoint + protocol bootstrap (`node1.stoachain.com:1789`) |
+| `https://node2.stoachain.com` | Public HTTPS endpoint + protocol bootstrap (`node2.stoachain.com:1789`) |
 
-```shell
-# Run a chainweb-node in Kadena's mainnet
-docker run -d -p 443:443 -v chainweb-db:target=/root/.local/share/chainweb-node/mainnet01/0/ kadena/chainweb-node
-```
-
-Further details can be found in the [README of the docker
-repository](https://hub.docker.com/r/kadena/chainweb-node).
-
-### Docker (bare metal)
-
-A docker image with just a bare chainweb-node binary and its dependencies is
-available at `ghcr.io/kadena-io/chainweb-node/ubuntu:latest`. It is up to the
-user to setup and manage the database and configure the node to their needs.
-
-```sh
-docker run -p 1789:1789 -p 80:80 --entrypoint=/chainweb/chainweb-node ghcr.io/kadena-io/chainweb-node/ubuntu:latest --help
-docker run -p 1789:1789 -p 80:80 --entrypoint=/chainweb/chainweb-node ghcr.io/kadena-io/chainweb-node/ubuntu:latest --print-config
-```
-
-Examples for running docker compose setups for chainweb-node for different usage scenarios
-can be found in [this repository](https://github.com/kadena-io/docker-compose-chainweb-node).
-
-### Ubuntu Linux
-
-The following packages must be installed on the host system:
-
-*   ubuntu-20.04:
-    ```bash
-    apt-get install ca-certificates libmpfr6 libgmp10 libssl1.1 libsnappy1v5 zlib1g liblz4-1 libbz2-1.0 libgflags2.2 zstd
-    ```
-
-*   ubuntu-22.04:
-    ```bash
-    apt-get install ca-certificates libmpfr6 libgmp10 libssl1.1 libsnappy1v5 zlib1g liblz4-1 libbz2-1.0 libgflags2.2 zstd
-    ```
-
-Chainweb-node binaries for ubuntu-20.04 and ubuntu-22.04 can be found
-[here](https://github.com/kadena-io/chainweb-node/releases).
-
-Download the archive for your system and extract the binaries and place them
-into a directory from where they can be executed.
-
-At this point, you are ready to [run a Chainweb node](#configuring-running-and-monitoring-the-health-of-a-chainweb-node)
-
-## Building from Source
-
-*IMPORTANT NOTE: We recommend the use of officially released chainweb-node
-binaries or docker images, which can be found in the
-[release section of this
-repository](https://github.com/kadena-io/chainweb-node/releases).
-If you decide to build your own binaries, please make sure to only use
-officially released and tagged versions of the code. Those versions are
-extensively tested to ensure that they are compatible with all other nodes in
-the chainweb network. It is generally not safe to run arbitrary builds of the
-master branch in the Kadena mainnet.*
-
-Chainweb is a [Haskell](https://www.haskell.org/) project. After cloning the
-code with git from this GitHub repository the chainweb-node application can be
-built as follows.
-
-### Building with Cabal
-
-In order to build with `cabal` you have to install `ghc-8.10.7` (Haskell compiler)
-and `cabal >= 3.4` (Haskell build-tool)
-
-*   [Linux / Mac](https://www.haskell.org/ghcup/)
-
-You need to install the development versions of the following libraries:
-`gflags`, `snappy`, `zlib`, `lz4`, `bz2`, `zstd`.
-
-On apt based distribution these can be installed as follows:
-
-```
-apt-get install ca-certificates libssl-dev libmpfr-dev libgmp-dev libsnappy-dev zlib1g-dev liblz4-dev libbz2-dev libgflags-dev libzstd-dev
-```
-
-To build a `chainweb-node` binary:
+Liveness check:
 
 ```bash
-# Only necessary if you haven't done this recently.
-cabal update
-
-# Build the project.
-#
-# After this, a runnable binary can be found by running `cabal list-bin chainweb-node`.
-cabal build
+curl -s https://node1.stoachain.com/info
+# {"nodeVersion":"stoa","nodeNumberOfChains":10,"nodeBlockDelay":30000000,
+#  "nodePackageVersion":"2.32.0", ...}
 ```
 
-### Building with Nix
+Bootstrap peers are declared in [`src/Chainweb/Version/Stoa.hs`](src/Chainweb/Version/Stoa.hs) under `_versionBootstraps`. Adding or removing a bootstrap requires a rebuild and redeploy on every node.
 
-Another way to build and run chainweb is to use the Nix package manager which
-has binary caching capabilities that allow you to download pre-built binaries
-for everything needed by Chainweb. For detailed instructions see [our
-    wiki](https://github.com/kadena-io/pact/wiki/Building-Kadena-Projects).
+---
 
-When the build is finished, you can run chainweb with the following command:
+## Building From Source
+
+Prerequisites:
+- **GHC 9.10.1**
+- **Cabal 3.14.1.1** (or newer)
+- A Unix-like environment with standard build tooling (`pkg-config`, `libsodium`, `libgmp`, `libtool`, etc.)
+
+Generate genesis payloads (if you have regenerated any genesis YAML or the coin source), then build:
 
 ```bash
-./result/ghc/chainweb/bin/chainweb-node
+cd cwtools && cabal run ea
+cd ..      && cabal build chainweb-node
 ```
 
-## Bootstrap Nodes
+The resulting binary is located under `dist-newstyle/`. Use `cabal list-bin chainweb-node` to print its exact path.
 
-Bootstrap nodes are used by chainweb-nodes on startup in order to discover other
-nodes in the network. At least one of the bootstrap nodes must be trusted.
+Nix users can build via the project flake/nix expressions committed to the repo (see `nix/` and `flake.nix`), though Cabal is the first-class path.
 
-Chainweb node operators can configure additional bootstrap nodes by using the
-`--known-peer-info` command line option or in a configuration file. It is also
-possible to ignore the builtin bootstrap nodes by using the
-`--enable-ignore-bootstrap-nodes` option or the respective configuration file
-setting.
+---
 
-Bootstrap nodes must have public DNS names and a corresponding TLS certificate
-that is issued by a widely accepted CA (a minimum requirement is acceptance by
-the OpenSSL library).
+## Running a Node
 
-Operators of bootstrap nodes are expected to guarantee long-term availability of
-the nodes. The list of builtin bootstrap nodes should be kept up-to-date and
-concise for each chainweb-node release.
+The repo ships a few convenience scripts used by the production deployment:
 
-If you like to have your node included as a bootstrap node please make a pull
-request that adds your node to [P2P.BootstrapNodes module](src/P2P/BootstrapNodes.hs).
+| File | Purpose |
+|------|---------|
+| [`deploy.sh`](deploy.sh) | Pulls / builds / installs the binary on a server |
+| [`run-stoa.sh`](run-stoa.sh) | Wraps `chainweb-node --chainweb-version stoa` with the canonical config |
+| [`stoa-node.service`](stoa-node.service) | systemd unit that invokes `run-stoa.sh` |
 
-### Current Testnet Bootstrap Nodes
+For the full launch procedure (config files, keyset setup, ports, TLS), see the checklist in the documentation repo: **[NODE_LAUNCH_CHECKLIST.md](https://github.com/StoaChain/StoaChain-Docs/blob/main/docs/chainweb-node/NODE_LAUNCH_CHECKLIST.md)**.
 
-- us1.testnet.chainweb.com
-- us2.testnet.chainweb.com
-- eu1.testnet.chainweb.com
-- eu2.testnet.chainweb.com
-- ap1.testnet.chainweb.com
-- ap2.testnet.chainweb.com
+---
 
-### Current Mainnet Bootstrap Nodes
+## Repository Layout
 
-All bootstrap nodes are running on port 443.
+```
+stoa-chain/
+├── src/Chainweb/                 Haskell source for the node
+│   ├── Version/Stoa.hs           Stoa network definition (version, bootstraps, genesis, gas limits)
+│   ├── Version/Registry.hs       Version registration (registers `stoa`)
+│   ├── Chainweb/Configuration.hs Default runtime configuration (block gas limit = 1.6M)
+│   ├── Pact4/                    Pact 4 infrastructure (retained, not exercised by live chain)
+│   └── Pact5/                    Pact 5.4 execution layer (live)
+├── pact/
+│   ├── stoa-coin/new-coin.pact   Coin module — defines STOA, URSTOA, UrStoaVault
+│   └── genesis/stoa/             Genesis YAMLs for Chain 0 and Chains 1-9
+├── rewards/miner_rewards.csv     Legacy upstream CSV (retained but ignored; emission is Pact-driven)
+├── cwtools/                      `ea` tool for regenerating genesis payloads
+├── test/                         Test suites (chainweb-tests, pact tests, etc.)
+├── cabal.project                 Build project file, pins Pact 5.4 source-repository-package
+├── deploy.sh / run-stoa.sh       Deployment scripts
+├── stoa-node.service             systemd unit
+└── assets/StoaLogo.png           Project logo
+```
 
-- us-e1.chainweb.com
-- us-e2.chainweb.com
-- us-e3.chainweb.com
-- us-w1.chainweb.com
-- us-w2.chainweb.com
-- us-w3.chainweb.com
-- jp1.chainweb.com
-- jp2.chainweb.com
-- jp3.chainweb.com
-- fr1.chainweb.com
-- fr2.chainweb.com
-- fr3.chainweb.com
+---
 
-## Configuring, running, and monitoring the health of a Chainweb Node
+## Key Code Entry Points
 
-**This section assumes you've installed the `chainweb-node` binary** somewhere
-sensible, or otherwise have a simple way to refer to it. For running
-`chainweb-node` via docker, please see the instruction above in this document or
-visit our [docker repository](https://hub.docker.com/r/kadena/chainweb-node).
+If you are reading this code for the first time, the StoaChain-specific surface area is small and concentrated:
 
-**Note:** Your node needs to be reachable from the public internet. You will
-have to perform Port Forwarding if your machine is behind a router (by default
-port 1789 is used by the node).
+- [`src/Chainweb/Version/Stoa.hs`](src/Chainweb/Version/Stoa.hs) — `ChainwebVersion` definition: name, version code, graph, block delay, genesis payloads, genesis time, block-gas-limit cap, bootstrap peers, verifier plugin allow-list.
+- [`src/Chainweb/Version/Registry.hs`](src/Chainweb/Version/Registry.hs) — registers `stoa` so it is selectable via `--chainweb-version stoa`.
+- [`src/Chainweb/Chainweb/Configuration.hs`](src/Chainweb/Chainweb/Configuration.hs) — runtime defaults; note `_configBlockGasLimit = 1_600_000`.
+- [`src/Chainweb/BlockHeader/Genesis/Stoa0Payload.hs`](src/Chainweb/BlockHeader/Genesis/Stoa0Payload.hs) and [`Stoa1to9Payload.hs`](src/Chainweb/BlockHeader/Genesis/Stoa1to9Payload.hs) — precompiled genesis payloads (regenerated by `cwtools/ea`).
+- [`pact/stoa-coin/new-coin.pact`](pact/stoa-coin/new-coin.pact) — coin module source at genesis. **The live modules have diverged via post-genesis upgrades** — for authoritative live behavior, fetch `describe-module` from a node or inspect the explorer.
+- [`pact/genesis/stoa/`](pact/genesis/stoa/) — genesis YAMLs for Chain 0 (the mint + module install) and Chains 1-9 (no-ops).
 
-**NOTE**: When you start chainweb-node for the first time it creates a new
-empty database and starts to synchronize and catch up with other nodes in the
-Kadena network. This process takes a long time -- several days. It is much
-faster (depending on hardware one to a few hours) to just synchronize the chain
-database or get a snapshot of it and only rebuild the pact databases from the
-chain-database. Please, consult the documentation of the docker images for
-chainweb-node about details on how to obtain an initial chain database.
+---
 
-Run your node:
+## Key Differences from Chainweb-Node
+
+| Aspect | Kadena Chainweb | StoaChain |
+|--------|-----------------|-----------|
+| **Native Token** | KDA (`coin` module) | STOA (`stoa-ns.*` modules) |
+| **Token Interface** | `fungible-v2` + `fungible-xchain-v1` | `stoa-ns.stoic-fungible-v1` + `stoa-ns.fungible-xchain-v1` |
+| **TRANSFER Capability** | Managed (`@managed`) only | Dual: `C_Transfer` wraps the managed original; `C_Transmit` exposes the same transfer logic with a non-managed capability |
+| **Main Namespace** | `kadena` | `stoa-ns` |
+| **Pact Version (on-chain)** | Pact 4 → Pact 5 migration | Pact 5.4 stock (node retains Pact 4 infra internally) |
+| **Emission Model** | CSV-based (`rewards/miner_rewards.csv`) | Computed inside Pact by `coin.URC_Emissions`; CSV retained but ignored |
+| **Networks** | mainnet01, testnet04, development, recap-development | Single network: `stoa` |
+| **Chain Count** | 20 chains (mainnet) | 10 chains (Petersen graph) |
+| **Block Gas Limit** | 180k max / 150k default | **2M max / 1.6M default** (production nodes run at 2M) |
+| **Gas Price Minimum** | Static (1e-8 KDA) | Static (inherited from upstream). Periodic ramp is planned, not shipped |
+
+For the full picture — emission formula, UrStoaVault staking (RPS model), 90/10 Yang split, governance via 7 Stoa Masters keysets, pre-launch configuration checklist — see the documentation repo at **[StoaChain-Docs](https://github.com/StoaChain/StoaChain-Docs)**.
+
+---
+
+## Tests
+
+The repository ships the full upstream `chainweb-tests` suite plus Pact-specific tests:
 
 ```bash
-chainweb-node
+# Full test suite
+cabal test chainweb-tests
+
+# Pact 5 unit tests only
+cabal test chainweb-tests --test-options='--pattern "Pact5"'
+
+# Run a single test pattern
+cabal test chainweb-tests --test-options='--pattern "<pattern>"'
 ```
 
-The node will communicate with other nodes in a P2P network. By default it uses
-port 1789 for the P2P communication.
+Test sources live under `test/` — `test/unit/` for unit tests, `test/lib/` for shared fixtures, and the Pact 4 / Pact 5 test trees under `Chainweb.Test.Pact4.*` and `Chainweb.Test.Pact5.*`.
 
-Node services are exposed via the service API, by default on port 1848. The
-service API includes `/info`, `/health-check`, Pact endpoints, the mining API
-endpoints, GET endpoints for on-chain data (headers, payloads, cuts), and an
-HTTP event stream of block header updates. Some of these are disabled by default
-(e.g. mining API, and header updates).
+---
 
-While the P2P endpoint must be directly available from the public internet, it
-is highly recommended to expose the service API only on a private network. When
-service API endpoints are made available publicly it is recommended to use a
-reverse proxy setup things like rate limiting, authentication, and CORS.
+## Documentation
 
-### Configuration
+Deep-dive documentation lives in a separate repo:
 
-No particular configuration is needed for running Chainweb node on the Kadena
-mainnet.
+- **StoaChain-Docs** — [`github.com/StoaChain/StoaChain-Docs`](https://github.com/StoaChain/StoaChain-Docs)
+  - `docs/chainweb-node/EMISSION_SYSTEM.md` — Yang emission formula
+  - `docs/chainweb-node/GAS_PRICE_SYSTEM.md` — Yin earnings and the planned gas-price ramp
+  - `docs/chainweb-node/GENESIS_SYSTEM.md` — Genesis payload pipeline
+  - `docs/chainweb-node/NODE_LAUNCH_CHECKLIST.md` — Pre-launch configuration
+  - `docs/chainweb-node/PACT4_REMOVAL.md` — Retrospective on the abandoned Pact 4 extraction
+  - `docs/pact-5/README.md` — Pact 5.4 overview as used on StoaChain
+- **GitBook** — [`demiourgos-holdings-tm.gitbook.io/kadena-evolution`](https://demiourgos-holdings-tm.gitbook.io/kadena-evolution)
+- **Explorer** — [`explorer.stoachain.com`](https://explorer.stoachain.com) / [`apiexplorer.stoachain.com`](https://apiexplorer.stoachain.com)
 
-Use `chainweb-node --help` to show a help message that includes a brief
-description of all available command line options.
+---
 
-A complete configuration file with the default settings can be created with
+## License
 
-```sh
-chainweb-node --print-config > config.yaml
-```
+StoaChain is released under the **MIT License**. See [LICENSE](LICENSE).
 
-This file can then be edited in order to change configuration values.
+This project is a software fork of [Kadena Chainweb](https://github.com/kadena-io/chainweb-node), which is also MIT licensed.
 
-The command `chainweb-node --help` also provides descriptions of these
-configuration values.
+---
 
-Given a configuration file or a set of command line options it is possible to
-print out only those configuration values that are different from their
-respective default:
+## Acknowledgments
 
-```
-chainweb-node --config-file=config.yaml --some-command-line-options --print-config-as=minimal
-```
+- **Kadena Team** — for creating the Chainweb protocol and the Pact language.
+- **StoaChain Contributors** — for adapting, extending, and operating the codebase.
 
+---
 
-### Monitoring the health of a Chainweb Node
+## Development Method
 
-The following outlines how you can check that your `chainweb-node` is healthy
+The extensive modifications to the Chainweb codebase — transforming it into StoaChain — were accomplished through a proprietary time dilation methodology. The StoaChain Admin, having cultivated mastery over spiritual energies — tapping into the primordial creational force that underlies existence — employed temporal manipulation capabilities to accelerate the development process.
 
-`chainweb-node` should be running from the public IP address and a port that is open to the other Chainweb nodes.
+Within a carefully constructed time dilation field, the ratio of 1 minute of external time to approximately 3 hours of internal time allowed what would normally require months of effort (learning Haskell, mastering its intricacies, understanding the complex Chainweb infrastructure) to be completed in mere hours of real-world time.
 
-If you're behind a NAT, it is **VERY IMPORTANT** that your network allows
-external nodes to connect to the node you are running.
+The Admin secluded himself within this temporal bubble with a laptop and a fuel-powered generator (operating at an accelerated rate to match the dilated timeframe), enabling the comprehensive overhaul of the codebase while the outside world experienced only a fraction of the elapsed duration.
 
-```
-$ chainweb-node --log-level <desired-log-level>
-```
+---
 
-For production scenarios we recommend that you use log-level `warn` or `error`.
-For troubleshooting or improved monitoring you can also use `info`.
-
-Once your node is running, go through the following checks to verify that you have a healthy node:
-*   run the command in your terminal:
-    ```
-    $ curl -sk "https://<public-ip>:<port>/chainweb/0.0/mainnet01/cut"
-    ```
-*   navigate to this website on your browser: [https://yourPublicIp:port/chainweb/0.0/mainnet01/cut](https://yourPublicIp:port/chainweb/0.0/mainnet01/cut)
-*   check logs for whether services are started
-*   check if the node is receiving cuts
-*   look for errors in the logs
-*   look for warnings in the logs
-
-Usually, when a node is receiving and publishing cuts (i.e. block heights at every chain), it's working correctly.
-
-The `/cut` endpoint will return the latest cut that your node has. It's possible that your node is falling behind, so make sure to compare its cut height with the cut heights of the bootstrap nodes. It's also possible that you are mining to a node that is catching up to the rest of the network. Before you start mining to a node, you SHOULD verify that this node has the most up-to-date cut.
-
-You can get the cut height of any node by running the following:
-
-```
-$ curl -sk https://<bootstrap-node-url>/chainweb/0.0/mainnet01/cut | jq '.height'
-```
-
-## Mine for a Chainweb Network
-
-Successful mining on mainnet requires specialized hardware (ASIC). The setup for solo mining involves running a chainweb-node with a configuration that enables mining and a [chainweb-mining-client](https://github.com/kadena-io/chainweb-mining-client/) that connects to the mining API of a chainweb-node and provides a Stratum API for the mining hardware (ASIC).
-
-Detailed instructions for setting up all the infrastructure needed to start
-mining using `docker compose` can be found in the documentation of [docker-compose-chainweb-node/mining-node](https://github.com/kadena-io/docker-compose-chainweb-node/tree/main/mining-node).
-
-For example, to set up a chainweb node for mining, see [this](https://github.com/kadena-io/docker-compose-chainweb-node/blob/main/mining-node/docker-compose.yaml#L126) section of the docker-compose file.
-
-Detailed mining client instructions can be found in the documentation of
-[chainweb-mining-client](https://github.com/kadena-io/chainweb-mining-client/)
-
-## Chainweb Design
-
-### Component Structure
-
-The Chainweb package contains the following buildable components:
-
-*   `chainweb` library: It provides the implementation for the different
-    components of a chainweb-node.
-
-*   `chainweb-node`: An application that runs a Chainweb node. It maintains copies
-    of a number of chains from a given Chainweb instance. It provides interfaces
-    (command-line and RPC) for directly interacting with the Chainweb or for
-    implementing applications such as miners and transaction management tools.
-
-*   `chainweb-tests`: A test suite for the Chainweb library and chainweb-node.
-
-*   `cwtool`: A collection of tools that are helpful for maintaining, testing,
-    and debugging Chainweb.
-
-*   `bench`: a collection of benchmarks
-
-### Architecture Overview
-
-![Architecture Overview](docs/Overview.png)
+*StoaChain — Building the future of decentralized computing.*

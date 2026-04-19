@@ -42,6 +42,8 @@ hlint.hs
 *.svg
 *.png
 *.graphml
+!assets/*.png
+!assets/*.svg
 cache/
 *.dump-hi
 standalonedbs/
