@@ -1,205 +1,28 @@
+;; ============================================================================
+;; live-coin-module.pact — REFERENCE SNAPSHOT (not compiled, not deployed)
+;; ----------------------------------------------------------------------------
+;; Captured: 2026-04-19
+;; Source:   live mainnet `coin` module on `node1.stoachain.com` /
+;;           `node2.stoachain.com` (fetch with `describe-module` to get the
+;;           current authoritative copy).
+;; Why it exists: documentation / audit reference for what the module looks
+;;           like on-chain AFTER the first post-genesis governance upgrade
+;;           (the UrStoaVault bug-fix upgrade). See ../upgrades/README.md.
+;;
+;; DO NOT edit new-coin.pact to match this file, and DO NOT regenerate the
+;; genesis payloads from this file. The genesis source must stay byte-frozen
+;; so that any new node computing block 0 from its compiled-in payloads
+;; produces the same block-0 hash as the live network.
+;; ============================================================================
 
-(interface fungible-v2
-    @doc "Standard for fungible coins as specified in KIP-0002 \
-    \ STOA Coin follows this standard"
-    
-    ;; [0] Schemas
-    (defschema account-details
-        @doc "Schema for results of Account Operation"
-        account:string
-        balance:decimal
-        guard:guard
-    )
-    ;; [1] CAPS
-    ;; [On Chain Transfers]
-    (defcap TRANSFER:bool (sender:string receiver:string amount:decimal)
-        @doc "Evented Capability that allows transsfer of <amount> from <sender> to <receiver> \
-            \ No longer managed to simplify operations"
-        @event
-    )
-    ;; [2] Functions
-    (defun get-balance:decimal (account:string)
-        @doc "Gets balance for <account>, failing if it doesnt exist"
-    )
-    (defun details:object{account-details} (account:string)
-        ;@doc "Gets an objects with details of <account>, failing if it doesnt exist"
-        @doc "<ORIGINAL> - Gets full details of a Stoa Account"
-    )
-    (defun precision:integer ()
-        @doc "Returns maximum allowed decimal precision"
-    )
-    ;;
-    (defun enforce-unit:bool (amount:decimal)
-        @doc "Enforce minimum precision allowed for transactions."
-    )
-    ;;
-    (defun create-account:string (account:string guard:guard)
-        @doc "Creates an <account> with 0.0 balance. with <guard> controlling acces"
-    )
-    (defun rotate:string (account:string new-guard:guard)
-        @doc "Rotates guard for <account>, with <new-guard> \
-        \ Existing guard of <account> is enforced"
-    )
-    (defun transfer:string (sender:string receiver:string amount:decimal)
-        @doc "Transfers <amount> from <sender> to <receiver> \
-            \ Fails if either <sender> or <receiver> does not exist"
-    )
-    (defun transfer-create:string 
-        (sender:string receiver:string receiver-guard:guard amount:decimal)
-        @doc "Transfers <amount> from <sender> to <receiver> \
-            \ Fails if <sender> does not exist \
-            \ If <receiver> exist, guard must match existing value \
-            \ If <receiver> does not exist, it is created using <receiver-guard> \
-            \ No longer subject to management by [TRANSFER] capability"
-    )
-    (defpact transfer-crosschain:string
-        (sender:string receiver:string receiver-guard:guard target-chain:string amount:decimal)
-        @doc "2 Step pact to transfer <amount> from <sender> to <receiver> on <target-chain> via SPV Proof \
-            \ <target-chain> must be different from current chain-id \
-            \ 1.Step debits <amount> from <sender> and yields <receiver>, <receiver-guard> and <amount> to <target-chain> \
-            \ 2.Step continuation is sent into <target-chain> with proof obtained from the spv output endpoint of Chainweb \
-            \ Proof is validated and <receiver> is credited the <amount>, creating account with <receiver-guard> as needed"
-    )
-
-)
-(interface fungible-xchain-v1
-    @doc "Offers standard capability for Cross-Chain transfers and associated events"
-    ;;
-    (defcap TRANSFER_XCHAIN:bool
-        (sender:string receiver:string amount:decimal target-chain:string)
-        @doc "Transfer Capability used for transfer from sender to receiver on target chain. \
-            \ No longer managed"
-        @event
-    )
-    (defcap TRANSFER_XCHAIN_RECD:bool (sender:string receiver:string amount:decimal source-chain:string)
-        @doc "Event emitted on receipt of cross-chain transfer."
-        @event
-    )
-)
-(interface gas-payer-v1
-    @doc "Interface required for Gas Stations"
-
-    (defcap GAS_PAYER:bool (user:string limit:integer price:decimal)
-      @doc "Provide a capability indicating that declaring module supports \
-        \ gas payment for USER for gas LIMIT and PRICE. Functionality \
-        \ should require capability (coin.FUND_TX), and should validate \
-        \ the spend of (limit * price), possibly updating some database \
-        \ entry. \
-        \ Should compose capability required for 'create-gas-payer-guard'."
-    )
-  
-    (defun create-gas-payer-guard:guard ()
-      @doc "Provide a guard suitable for controlling a coin account that can \
-        \ pay gas via GAS_PAYER mechanics. Generally this is accomplished \
-        \ by having GAS_PAYER compose an unparameterized, unmanaged capability \
-        \ that is required in this guard. Thus, if coin contract is able to \
-        \ successfully acquire GAS_PAYER, the composed 'anonymous' cap required \
-        \ here will be in scope, and gas buy will succeed."
-    )
-
-)
-(interface StoaFungibleV1
-    @doc "Standard Interface for Stoa based True Fungibles \
-    \ Stoa based true fungibles must adhere to a special syntax and architecture, \
-    \ that incorporate <fungible-v2> and <fungible-xchain-v1> interfaces, \
-    \ while adding additional functionality, such as Supply Tracking \
-    \ Must allways allow for crosschain-transfers."
-    ;; [0] Schemas
-    (defschema account-details
-        @doc "Schema for results of Account Operation"
-        account:string
-        balance:decimal
-        guard:guard
-    )
-    (defschema LocalSupplySchema
-        local-circulating:decimal
-    )
-    ;; [0.1] Constants
-    (defconst CSK "chain-supply-key")
-    (defun CoinSupplyKey ()
-        @doc "Must point to <StoaFungibleV1.CSK>"
-    )
-    ;; [1] CAPS
-    ;; [On Chain Transfers]
-    (defcap TRANSFER:bool (sender:string receiver:string amount:decimal)
-        @doc "Evented Capability that allows transsfer of <amount> from <sender> to <receiver> \
-            \ No longer managed to simplify operations"
-        @event
-    )
-    ;;  [Cross Chain Transfers]
-    (defcap TRANSFER_XCHAIN:bool
-        (sender:string receiver:string amount:decimal target-chain:string)
-        @doc "Transfer Capability used for transfer from sender to receiver on target chain. \
-            \ No longer managed"
-        @event
-    )
-    (defcap TRANSFER_XCHAIN_RECD:bool (sender:string receiver:string amount:decimal source-chain:string)
-        @doc "Event emitted on receipt of cross-chain transfer."
-        @event
-    )
-    ;;  [Other]
-    (defcap UPDATE-LOCAL-SUPPLY:bool ()
-        @doc "Simple <true> capability needed to update the local supply"
-    )
-    ;; [2] Functions
-    ;;
-    ;;  [UR]
-    ;;
-    (defun UR_Precision:integer ())
-    (defun UR_Details:object{fungible-v2.account-details} (account:string))
-    (defun UR_Balance:decimal (account:string))
-    (defun UR_Guard:guard (account:string))
-    (defun UR_LocalCoinSupply:decimal ())
-    ;;
-    ;;  [UEV]
-    ;;
-    (defun UEV_CoinPrecision:bool (amount:decimal)
-        @doc "Should validate Coin Precision"
-    )
-    ;;
-    ;;  [CAP]
-    ;;
-    (defun CAP_Account (account:string)
-        @doc "Should enforce account wonership"
-    )
-    ;;
-    ;;  [C]
-    ;;
-    (defun C_CreateAccount:string (account:string guard:guard)
-        @doc "Should create a new coin account"
-    )
-    (defun C_RotateAccount:string (account:string new-guard:guard)
-        @doc "Should rotate the guard oan existing account"
-    )
-    (defun C_Transfer:string (sender:string receiver:string amount:decimal)
-        @doc "Should transfer <amount> from <sender> to <receiver>"
-    )
-    (defun C_TransferAnew:string (sender:string receiver:string receiver-guard:guard amount:decimal)
-        @doc "Should transfer <amount> from <sender> to <receiver> with account creation using <receiver-guard>"
-    )
-    (defun C_TransferAcross:string (sender:string receiver:string receiver-guard:guard target-chain:string amount:decimal)
-        @doc "Should execute a crosschain transfer using the <transfer-crosschain> defpact"
-    )
-    (defpact transfer-crosschain:string (sender:string receiver:string receiver-guard:guard target-chain:string amount:decimal)
-        @doc "Should execute a crosschain transfer using 2 steps"
-    )
-    ;;
-    ;;  [X]
-    ;;
-    (defun X_UpdateLocalSupply (amount:decimal direction:bool)
-        @doc "Used to update coin local supply. \
-        \ Must required [UPDATE-LOCAL-SUPPLY] for the supply to be updated safely"
-    )
-)
-  
 (module coin GOVERNANCE
     @doc "Stoa represents the StoaChain Coin Contract \
         \ Forked from the latest original coin contract on Kadena Chain"
-
-    (implements fungible-v2)                        ;;former fungible-v2 (wil be v2 on mainet)
-    (implements fungible-xchain-v1)                 ;;aka StoaXChainV1
-    (implements StoaFungibleV1)                     ;;Adheres to Stoa Nomeclature
-
+    ;;
+    (implements stoa-ns.fungible-v1)                ;;former <fungible-v2>, starting on StoaChain as v1
+    (implements stoa-ns.fungible-xchain-v1)         ;;former <fungible-xchain-v1>
+    (implements stoa-ns.stoic-fungible-v1)          ;;Incorporates <fungible-v1> and <fungible-xchain-v1> with extra functionality
+    (implements stoa-ns.ur-stoic-fungible-v1)       ;;Incorporates UrStoa and UrStoaVault Functionality
     ;;
     ;;<========>
     ;;GOVERNANCE
@@ -239,8 +62,6 @@
     (defschema coin-schema
         @doc "<ORIGINAL> \
             \ The STOA contract token schema"
-        ;;@model [(invariant (>= balance 0.0))]
-    
         balance:decimal
         guard:guard
     )
@@ -254,7 +75,7 @@
     )
     ;;{2}
     (deftable coin-table:{coin-schema})             ;;<ORIGINAL>
-    (deftable LocalSupply:{StoaFungibleV1.LocalSupplySchema})
+    (deftable LocalSupply:{stoa-ns.stoic-fungible-v1.LocalSupplySchema})
     ;;{3}
     (defconst COIN_CHARSET                          CHARSET_LATIN1
         "<ORIGINAL> - The default coin contract character set"
@@ -266,7 +87,7 @@
         "<ORIGINAL> - Minimum account length admissible for coin accounts"
     )
     (defconst MAXIMUM_ACCOUNT_LENGTH                256
-        "<ORIGINAL> - Maximum account name length admissible for coin accounts"    
+        "<ORIGINAL> - Maximum account name length admissible for coin accounts"
     )
     (defconst VALID_CHAIN_IDS                       (map (int-to-str 10) (enumerate 0 9))
         "<ORIGINAL> - List of all valid Chainweb chain ids (10 Chains for STOA)"
@@ -275,7 +96,7 @@
     (defconst STOA_PREC                             MINIMUM_PRECISION)
     ;;
     (defconst GENESIS-SUPPLY                        16000000.0)
-    (defconst GENESIS-TIME                          (time "2026-01-01T00:00:00Z"))
+    (defconst GENESIS-TIME                          (time "2026-02-18T21:30:00Z"))
     (defconst BPD                                   2880)
     ;;
     (defconst GENESIS-MIN-GAS-PRICE                 10000)          ; 10,000 ANU
@@ -287,7 +108,7 @@
         MINIMUM_PRECISION
     )
     (defun CoinSupplyKey ()
-        StoaFungibleV1.CSK
+        stoa-ns.stoic-fungible-v1.CSK
     )
     ;;
     ;;<==========>
@@ -342,29 +163,54 @@
     )
     ;;{C3}
     ;;{C4}
-    (defcap TRANSFER:bool (sender:string receiver:string amount:decimal)
-        @doc "<ORIGINAL> - TRANSFER Capability is no longer managed"
+    (defcap TRANSMIT:bool (sender:string receiver:string amount:decimal)
+        @doc "Similar to TRANSFER, but unmanaged"
         @event
+        (compose-capability (X_TRANSFER sender receiver amount))
+    )
+    (defcap TRANSFER:bool (sender:string receiver:string amount:decimal)
+        @doc "<ORIGINAL> - TRANSFER Capability"
+        @managed amount TRANSFER-mgr
+        (compose-capability (X_TRANSFER sender receiver amount))
+    )
+    (defun TRANSFER-mgr:decimal (managed:decimal requested:decimal)
+        (let
+            (
+                (newbal:decimal (- managed requested))
+            )
+            (enforce
+                (>= newbal 0.0)
+                (format "STOA TRANSFER exceeded for balance {}" [managed])
+            )
+            newbal
+        )
+    )
+    (defcap X_TRANSFER:bool (sender:string receiver:string amount:decimal)
         (UEV_Account sender)
         (UEV_Account receiver)
         (UEV_SenderWithReceiver sender receiver)
         (UEV_Amount amount "Transfer requires a positive amount")
         (UEV_CoinPrecision amount)
-        ;(UEV_SufficientBalance sender amount)
         (compose-capability (DEBIT sender))
         (compose-capability (CREDIT receiver))
     )
     (defcap TRANSFER_XCHAIN:bool (sender:string receiver:string amount:decimal target-chain:string)
-        @doc "<ORIGINAL> - TRANSFER_XCHAIN Capability is no longer managed"
-        @event
+        @doc "<ORIGINAL> - TRANSFER_XCHAIN Capability"
+        @managed amount TRANSFER_XCHAIN-mgr
         (UEV_Account sender)
         (UEV_Account receiver)
         (UEV_Amount amount "Transfer-Across requires a positive amount")
         (UEV_CoinPrecision amount)
-        ;(UEV_SufficientBalance sender amount)
         (UEV_AcrossChainID target-chain)
         (compose-capability (DEBIT sender))
         (compose-capability (UPDATE-LOCAL-SUPPLY))
+    )
+    (defun TRANSFER_XCHAIN-mgr:decimal (managed:decimal requested:decimal)
+        (enforce
+            (>= managed requested)
+            (format "STOA TRANSFER_XCHAIN exceeded for balance {}" [managed])
+        )
+        0.0
     )
     ;;
     ;;<=======>
@@ -394,7 +240,7 @@
                 (genesis-time:time GENESIS-TIME)
                 (year (format-time "%Y" genesis-time))
                 (year-end (parse-time "%Y-%m-%d %H:%M:%S" (format "{}-12-31 23:59:59" [year])))
-                (seconds-remaining 
+                (seconds-remaining
                     ;;Seconds remaining untill year end
                     (diff-time year-end genesis-time)
                 )
@@ -418,7 +264,7 @@
                 (div100 (= (mod year 100) 0))
                 (div400 (= (mod year 400) 0))
                 (iz-leap-year:bool
-                    (and 
+                    (and
                         div4
                         (or (not div100) div400)
                     )
@@ -428,7 +274,7 @@
         )
     )
     (defun UC_YearEmission:decimal (stoa-year:integer)
-        ;;Yearly Emission follows the formula 
+        ;;Yearly Emission follows the formula
         ;;(Ceiling-Supply[at year start])/(Speed);;
         ;;
         ;;Starting Parameters:
@@ -476,15 +322,15 @@
         @doc "Returns the current minimum gas price in ANU (smallest STOA unit). \
             \ Starts at 10,000 ANU at genesis, increases by 1 ANU every 3 hours, \
             \ caps at 400,000 ANU."
-        (let* 
+        (let*
             (
                 (current-time:time (at "block-time" (chain-data)))
                 (seconds-elapsed:decimal (diff-time current-time GENESIS-TIME))
                 (intervals:integer (floor (/ seconds-elapsed GAS-PRICE-INTERVAL)))
-                (raw-price:integer (+ GENESIS-MIN-GAS-PRICE (round intervals)))
+                (raw-price:integer (+ GENESIS-MIN-GAS-PRICE intervals))
             )
-            (if (> raw-price MAX-GAS-PRICE) 
-                MAX-GAS-PRICE 
+            (if (> raw-price MAX-GAS-PRICE)
+                MAX-GAS-PRICE
                 raw-price
             )
         )
@@ -498,7 +344,7 @@
         @doc "Returns the precision of the Stoa Coin"
         (precision)
     )
-    (defun UR_Details:object{fungible-v2.account-details} (account:string)
+    (defun UR_Details:object{stoa-ns.fungible-v1.account-details} (account:string)
         (details account)
     )
     (defun UR_Balance:decimal (account:string)
@@ -523,7 +369,7 @@
             balance
         )
     )
-    (defun details:object{fungible-v2.account-details} (account:string)
+    (defun details:object{stoa-ns.fungible-v1.account-details} (account:string)
         @doc "<ORIGINAL> - Gets full details of a Stoa Account"
         (with-read coin-table account
             {"balance"  := bal
@@ -537,7 +383,7 @@
         \ Ouputs two values: \
         \ [<block-emission> <urv-emission>] \
         \ <block-emission> = how much each block on each chain gets = 90% split to all chains \
-        \ <urv-emission> = how much the UrstoaVault gets = 10% from all chains"   
+        \ <urv-emission> = how much the UrstoaVault gets = 10% from all chains"
         (let
             (
                 (chains:integer (length VALID_CHAIN_IDS))
@@ -546,9 +392,9 @@
                 (yearly-stoa-supply:decimal (URC_YearEmission))
                 (yearly-days:integer (UC_YearDays current-year))
                 (yearly-blocks:integer (* yearly-days BPD))
-                (yearly-blocks-total:integer 
+                (yearly-blocks-total:integer
                     (if (!= stoa-year 0)
-                        (* chains yearly-blocks)    
+                        (* chains yearly-blocks)
                         (UC_YearZeroBlocks)
                     )
                 )
@@ -603,7 +449,7 @@
             (
                 (account-balance:decimal (UR_Balance account))
             )
-            (enforce 
+            (enforce
                 (<= amount account-balance)
                 (format "The amount of {} is to great to debit from Account {}" [amount account])
             )
@@ -622,13 +468,12 @@
         ;;1]Enforces existing account guard
         (CAP_Account account)
         (UEV_PureRotate account new-guard)
-        
     )
     (defun UEV_PureRotate:bool (account:string new-guard:guard)
         ;;1]Allow rotation only for vanity accounts, or
         ;;  re-rotating a principal account back to its proper guard
-        (enforce 
-            (or 
+        (enforce
+            (or
                 (not (is-principal account))
                 (validate-principal new-guard account)
             )
@@ -664,12 +509,12 @@
     (defun enforce-unit:bool (amount:decimal)
         @doc "<ORIGINAL> - Enforce minimum precision allowed for coin transactions"
         (enforce
-            (= 
+            (=
                 (floor amount STOA_PREC)
                 amount
             )
-            (format 
-                "Amount {} violates Stoa Precision of {}" 
+            (format
+                "Amount {} violates Stoa Precision of {}"
                 [amount STOA_PREC]
             )
         )
@@ -693,13 +538,13 @@
         )
     )
     ;;{F3}  [UDC]
-    (defun UDC_AccountDetails:object{fungible-v2.account-details}
+    (defun UDC_AccountDetails:object{stoa-ns.fungible-v1.account-details}
         (a:string b:decimal c:guard)
         {"account"          : a
         ,"balance"          : b
         ,"guard"            : c}
     )
-    (defun UDC_AccountData:object{coin-schema} 
+    (defun UDC_AccountData:object{coin-schema}
         (a:decimal b:guard)
         {"balance"          : a
         ,"guard"            : b}
@@ -759,9 +604,21 @@
     (defun C_TransferAnew:string (sender:string receiver:string receiver-guard:guard amount:decimal)
         (transfer-create sender receiver receiver-guard amount)
     )
-    (defun C_TransferAcross:string 
+    (defun C_TransferAcross:string
         (sender:string receiver:string receiver-guard:guard target-chain:string amount:decimal)
         (transfer-crosschain sender receiver receiver-guard target-chain amount)
+    )
+    (defun C_Transmit:string (sender:string receiver:string amount:decimal)
+        (with-capability (TRANSMIT sender receiver amount)
+            (debit sender amount)
+            (credit receiver (UR_Guard receiver) amount)
+        )
+    )
+    (defun C_TransmitAnew:string (sender:string receiver:string receiver-guard:guard amount:decimal)
+        (with-capability (TRANSMIT sender receiver amount)
+            (debit sender amount)
+            (credit receiver receiver-guard amount)
+        )
     )
     ;;
     (defun create-account:string (account:string guard:guard)
@@ -796,7 +653,7 @@
             (credit receiver receiver-guard amount)
         )
     )
-    (defpact transfer-crosschain:string 
+    (defpact transfer-crosschain:string
         (sender:string receiver:string receiver-guard:guard target-chain:string amount:decimal)
         (step
             (with-capability (TRANSFER_XCHAIN sender receiver amount target-chain)
@@ -894,7 +751,7 @@
             (enforce (= retg guard) "Account guards do not match !")
             (let
                 (
-                    (is-new:bool 
+                    (is-new:bool
                         (if (= balance -1.0)
                             (UEV_Reserved account guard)
                             false
@@ -911,7 +768,7 @@
     (defpact fund-tx (sender:string miner:string miner-guard:guard total:decimal)
         @doc "<ORIGINAL> - [MAGIC] Funds a transaction in two steps, \
             \ with the actual transaction transpiring in the middle \
-            \ \ 
+            \ \
             \ 1] A buying phase, debiting the sender for total gas and fee, yielding TX_MAX_CHARGE \
             \ 2] A settlement phase, resuming TX_MAX_CHARGE, \
             \    and allocating to the coinbase account for used gas and fee \
@@ -929,7 +786,6 @@
         (UEV_Amount total "Gas Supply must be positive")
         (UEV_Account sender)
         (UEV_CoinPrecision total)
-        ;UEV_SufficientBalance sender total)
         (with-capability (DEBIT sender)
             (debit sender total)
         )
@@ -976,9 +832,9 @@
             \ <amount> is discarded, and proper amount are computed within. \
             \ <amount is kept for csv read compatibility> \
             \ \
-            \ Mints 90% of emissions split on everz chain \
+            \ Mints 90% of emissions split on every chain \
             \ Mints and injects 10% of emissions on Chain 0 in the UrStoa Vault \
-            \ \ 
+            \ \
             \ The proper amounts are computed via <URC_Emissions>"
         (require-capability (COINBASE))
         (UEV_Account account)
@@ -1005,7 +861,7 @@
                         (credit account account-guard whole)
                     )
                     ;;3]Miner <account> injects <urv-emission> to UrStoaVault
-                    (C_URV|Inject account urv-emission)
+                    (C_URV|CoinbaseInject account urv-emission)
                     ;;4]Return the proper output string
                     (format
                         "Miner {} succesfully mined {} STOA, and injected an additional {} STOA to the UrStoa Vault"
@@ -1084,7 +940,7 @@
     ;;{1}
     ;;{2}
     (deftable UR|StoaTable:{coin-schema})
-    (deftable UR|LocalSupply:{StoaFungibleV1.LocalSupplySchema})
+    (deftable UR|LocalSupply:{stoa-ns.stoic-fungible-v1.LocalSupplySchema})
     ;;{3}
     (defconst URSTOA_PREC               3)
     (defconst URGENESIS-SUPPLY          1000000.0)
@@ -1111,21 +967,51 @@
     )
     ;;{C3}
     ;;{C4}
-    (defcap UR|TRANSFER:bool (sender:string receiver:string amount:decimal)
+    (defcap UR|TRANSMIT:bool (sender:string receiver:string amount:decimal)
+        @doc "Similar to UR|TRANSFER, but unmanaged"
         @event
-        (UEV_Account sender)
-        (UEV_Account receiver)
-        (UEV_SenderWithReceiver sender receiver)
-        (UEV_Amount amount "Transfer requires a positive amount")
-        (UEV_UR|StoaPrecision amount)
-        (compose-capability (UR|DEBIT sender amount))
-        (compose-capability (UR|CREDIT receiver))
+        (compose-capability (X_UR|TRANSFER sender receiver amount))
+    )
+    (defcap UR|TRANSFER:bool (sender:string receiver:string amount:decimal)
+        @managed amount UR|TRANSFER-mgr
+        (compose-capability (X_UR|TRANSFER sender receiver amount))
+    )
+    (defun UR|TRANSFER-mgr:decimal (managed:decimal requested:decimal)
+        (let
+            (
+                (newbal:decimal (- managed requested))
+            )
+            (enforce
+                (>= newbal 0.0)
+                (format "URSTOA TRANSFER exceeded for balance {}" [managed])
+            )
+            newbal
+        )
+    )
+    (defcap X_UR|TRANSFER:bool (sender:string receiver:string amount:decimal)
+        (let
+            (
+                (urv-konto:string URV|KONTO)
+            )
+            (enforce
+                (!= receiver urv-konto)
+                "UrStoa cannot be transferred to the UrStoaVault, it cannot only be staked into it!"
+            )
+            (UEV_Account sender)
+            (UEV_Account receiver)
+            (UEV_SenderWithReceiver sender receiver)
+            (UEV_Amount amount "Transfer requires a positive amount")
+            (UEV_UR|StoaPrecision amount)
+            (compose-capability (UR|DEBIT sender amount))
+            (compose-capability (UR|CREDIT receiver))
+            (compose-capability (SECURE))
+        )
     )
     ;;
     ;;<=======>
     ;;FUNCTIONS
     ;;{F0}  [UR]
-    (defun UR_UR|Details:object{fungible-v2.account-details} (account:string)
+    (defun UR_UR|Details:object{stoa-ns.fungible-v1.account-details} (account:string)
         (UEV_ChainZero)
         (with-read UR|StoaTable account
             {"balance"  := bal
@@ -1157,7 +1043,7 @@
             (
                 (account-balance:decimal (UR_UR|Balance account))
             )
-            (enforce 
+            (enforce
                 (<= amount account-balance)
                 (format "The UrStoa amount of {} is to great to debit from Account {}" [amount account])
             )
@@ -1206,18 +1092,31 @@
     )
     (defun C_UR|Transfer:string (sender:string receiver:string amount:decimal)
         (with-capability (UR|TRANSFER sender receiver amount)
-            (X_UR|Debit sender amount)
-            (X_UR|Credit receiver (UR_UR|Guard receiver) amount)
+            (X_UR|Transfer sender receiver (UR_UR|Guard receiver) amount)
         )
     )
     (defun C_UR|TransferAnew:string (sender:string receiver:string receiver-guard:guard amount:decimal)
         (with-capability (UR|TRANSFER sender receiver amount)
-            (X_UR|Debit sender amount)
-            (X_UR|Credit receiver receiver-guard amount)
+            (X_UR|Transfer sender receiver receiver-guard amount)
+        )
+    )
+    (defun C_UR|Transmit:string (sender:string receiver:string amount:decimal)
+        (with-capability (UR|TRANSMIT sender receiver amount)
+            (X_UR|Transfer sender receiver (UR_UR|Guard receiver) amount)
+        )
+    )
+    (defun C_UR|TransmitAnew:string (sender:string receiver:string receiver-guard:guard amount:decimal)
+        (with-capability (UR|TRANSMIT sender receiver amount)
+            (X_UR|Transfer sender receiver receiver-guard amount)
         )
     )
     ;;{F7}  [X]  - Auxiliary Functions with protection
-    ;;      [XM] - Protected by Magic Capabilities (Node Runtime)  
+    ;;      [XM] - Protected by Magic Capabilities (Node Runtime)
+    (defun X_UR|Transfer:string (sender:string receiver:string receiver-guard:guard amount:decimal)
+        (require-capability (SECURE))
+        (X_UR|Debit sender amount)
+        (X_UR|Credit receiver receiver-guard amount)
+    )
     (defun X_UR|Credit:string (account:string guard:guard amount:decimal)
         @doc "Credits UrStoa <amount> to <account> balance"
         (UEV_Account account)
@@ -1232,7 +1131,7 @@
             (enforce (= retg guard) "Account guards do not match !")
             (let
                 (
-                    (is-new:bool 
+                    (is-new:bool
                         (if (= balance -1.0)
                             (UEV_Reserved account guard)
                             false
@@ -1331,7 +1230,7 @@
         stoa-supply:decimal                                     ;;Stores the total STOA held in Vault as claimable Rewards
         nzs-count:integer                                       ;;Stores the number of users with <Non-Zero-Score>
         current-rps:decimal                                     ;;Stores current RPS decimal
-        unclaimed-count:integer                                 ;;Stores the total number of Users with unclaimed Rewards        
+        unclaimed-count:integer                                 ;;Stores the total number of Users with unclaimed Rewards
     )
     (defschema UrStoaUserSchema
         user-supply:decimal                                     ;;Stores the URSTOA amount held in Vault by <account>
@@ -1351,6 +1250,46 @@
     ;;{C2}
     ;;{C3}
     ;;{C4}
+    (defcap URV|INJECT ()
+        @event
+        (let
+            (
+                (vault-score:decimal (UR_URV|VaultUrSupply))
+            )
+            (enforce (> vault-score 0.0) "URSTOA-Vault Score must be greater than 0.0 for injection")
+            (compose-capability (SECURE))
+        )
+    )
+    (defcap URV|STAKE (account:string amount:decimal)
+        @managed
+        (compose-capability (UR|DEBIT account amount))
+        (compose-capability (UR|CREDIT URV|KONTO))
+        (compose-capability (SECURE))
+    )
+    (defcap URV|UNSTAKE (account:string amount:decimal)
+        @managed
+        (let
+            (
+                (vault-score:decimal (UR_URV|VaultUrSupply))
+                (user-score:decimal (UR_URV|UserSupply account))
+                (remaining:decimal (- user-score amount))
+                (vault-remaining:decimal (- vault-score amount))
+            )
+            (enforce (>= remaining 0.0) (format "Account {} Vault Balance exceded by {}" [account (abs remaining)]))
+            (enforce (>= vault-remaining 1.0) "At least 1.0 URSTOA must remain in the URSTOA-Vault")
+            (CAP_UR|Account account)
+            (compose-capability (URV|NATIVE-AUTOMATIC))
+            (compose-capability (UR|DEBIT URV|KONTO amount))
+            (compose-capability (UR|CREDIT account))
+            (compose-capability (SECURE))
+        )
+    )
+    (defcap URV|COLLECT (account:string)
+        @managed
+        (CAP_Account account)
+        (compose-capability (URV|NATIVE-AUTOMATIC))
+        (compose-capability (SECURE))
+    )
     ;;
     ;;<=======>
     ;;FUNCTIONS
@@ -1414,6 +1353,19 @@
         )
     )
     ;;{F1}  [URC]
+    (defun URC_URV|ClaimableRewards:decimal (account:string)
+        @doc "Computes Claimable Reward of Account. When only one staker has unclaimed rewards (unclaimed-count=1), \
+            \ that staker receives the full vault supply to avoid rounding dust."
+        (let
+            (
+                (available:decimal (URC_AvailableRewards account))
+            )
+            (if (and (= (UR_URV|VaultUnclaimedCount) 1) (> available 0.0))
+                (UR_URV|VaultSupply)
+                available
+            )
+        )
+    )
     (defun URC_AvailableRewards (account:string)
         (let
             (
@@ -1440,66 +1392,49 @@
     ;;
     ;;{F5}  [A]
     ;;{F6}  [C]
-    (defcap URV|INJECT ()
-        @event
-        (let
-            (
-                (vault-score:decimal (UR_URV|VaultUrSupply))
-            )
-            (enforce (> vault-score 0.0) "URSTOA-Vault Score must be greater than 0.0 for injection")
-            (compose-capability (SECURE))
-        )
-    )
-    (defcap URV|STAKE (account:string amount:decimal)
-        @event
-        (compose-capability (SECURE))
-    )
-    (defcap URV|UNSTAKE (account:string amount:decimal)
-        @event
-        (let
-            (
-                (vault-score:decimal (UR_URV|VaultUrSupply))
-                (user-score:decimal (UR_URV|UserSupply account))
-                (remaining:decimal (- user-score amount))
-                (vault-remaining:decimal (- vault-score amount))
-            )
-            (enforce (>= remaining 0.0) (format "Account {} Vault Balance exceded by {}" [account (abs remaining)]))
-            (enforce (>= vault-remaining 1.0) "At least 1.0 URSTOA must remain in the URSTOA-Vault")
-            (CAP_UR|Account account)
-            (compose-capability (URV|NATIVE-AUTOMATIC))
-            (compose-capability (SECURE))
-        )
-    )
-    (defcap URV|COLLECT (account:string)
-        @event
-        (CAP_Account account)
-        (compose-capability (URV|NATIVE-AUTOMATIC))
-        (compose-capability (SECURE))
-    )
-    ;;
-    ;;
-    (defun C_URV|Inject (account:string stoa-amount:decimal)
-        @doc "Injects STOA <amount> into the URSTOA-Vault"
+    (defun C_URV|Inject:string (account:string stoa-amount:decimal)
+        @doc "Injects Stoa into the UrStoa Vault. \
+            \ Uses the <C_Transfer> function to inject, which requires the <TRANSFER> cap to be scoped \
+            \ In this manner, the <account> itself can also pay for the tx Gas."
         (with-capability (URV|INJECT)
-            (let
-                (
-                    (vault-score:decimal (UR_URV|VaultUrSupply))
-                    (gained-rps:decimal (floor (/ stoa-amount vault-score) STOA_PREC))
-                    (current-rps:decimal (UR_URV|VaultRPS))
-                    (new-rps:decimal (+ current-rps gained-rps))
-                )
-                ;;0]Move Stoa from Account to the URSTOA-Vault
-                (C_Transfer account URV|KONTO stoa-amount)
-                ;;1]Update Vault <current-rps> with new value gained from injecting <stoa-amount>
-                (XI_URV|UpdateVaultRPS new-rps)
-                ;;2]Update Vault <stoa-supply> with <stoa-amount>
-                (XI_URV|UpdateVaultSupply stoa-amount true)
-                ;;3]Reset <unclaimed-count> (set it to <nzs-count>)
-                (XI_URV|ResetUnclaimedCount)
-            )
+            (XI_URV|Inject account stoa-amount false)
         )
     )
-    (defun C_URV|Stake (account:string urstoa-amount:decimal)
+    (defun C_URV|CoinbaseInject:string (account:string stoa-amount:decimal)
+        @doc "Injects Stoa into the UrStoa Vault. \
+            \ Uses the <C_Transmit> function to inject \
+            \ In this manner, the <account> itself cannot pay for the Gas. \
+            \ An external account different than the <account> must cover the gas fees \
+            \ Used in <coinbase>, since there an external gas payer is not needed"
+        (with-capability (URV|INJECT)
+            (XI_URV|Inject account stoa-amount true)
+        )
+    )
+    (defun XI_URV|Inject:string (account:string stoa-amount:decimal coinbase:bool)
+        @doc "Injects STOA <amount> into the URSTOA-Vault"
+        (require-capability (URV|INJECT))
+        (let
+            (
+                (vault-score:decimal (UR_URV|VaultUrSupply))
+                (gained-rps:decimal (floor (/ stoa-amount vault-score) STOA_PREC))
+                (current-rps:decimal (UR_URV|VaultRPS))
+                (new-rps:decimal (+ current-rps gained-rps))
+            )
+            ;;0]Move Stoa from Account to the URSTOA-Vault using Unmanaged Transfer via Transmit
+            (if coinbase
+                (C_Transmit account URV|KONTO stoa-amount)
+                (C_Transfer account URV|KONTO stoa-amount)
+            )
+            ;;1]Update Vault <current-rps> with new value gained from injecting <stoa-amount>
+            (XI_URV|UpdateVaultRPS new-rps)
+            ;;2]Update Vault <stoa-supply> with <stoa-amount>
+            (XI_URV|UpdateVaultSupply stoa-amount true)
+            ;;3]Do not reset <unclaimed-count> on inject so accounts with 0 stake but pending rewards remain counted
+            ;;4]Returns Output Text
+            (format "Succesfully injected {} STOA to UrStoaVault" [stoa-amount])
+        )
+    )
+    (defun C_URV|Stake:string (account:string urstoa-amount:decimal)
         @doc "Stakes URSTOA in the URSTOA-Vault in order to earn 10% of Yang Emissions"
         (with-capability (URV|STAKE account urstoa-amount)
             (let
@@ -1507,7 +1442,7 @@
                     (user-score:decimal (UR_URV|UserSupply account))
                 )
                 ;;1]Move URSTOA from user to the Vault
-                (C_UR|Transfer account URV|KONTO urstoa-amount)
+                (X_UR|Transfer account URV|KONTO (GOV|URV|GUARD) urstoa-amount)
                 ;;2.1]Update Pending Rewards
                 (if (not (UR_URV|IzAccount account))
                     (insert URV|UrStoaVaultUser account
@@ -1519,17 +1454,22 @@
                 ;;2.2]Update Vault and User Scores
                 (XI_URV|UpdateVaultScore urstoa-amount true)
                 (XI_URV|UpdateUserScore account urstoa-amount true)
-                ;;2.3]If initial <user-score> was 0, increment <nzs-count>
+                ;;2.3]If initial <user-score> was 0, increment <nzs-count> and increment <unclaimed-count> (new staker); do not reset unclaimed to nzs or we lose 0-score-with-pending accounts
                 (if (= user-score 0.0)
-                    (XI_URV|UpdateNZS true)
+                    (do
+                        (XI_URV|UpdateNZS true)
+                        (XI_URV|UpdateUnclaimedCount true)
+                    )
                     true
                 )
                 ;;2.4]Update <last-rps> with the Vaults <current-rps>
                 (XI_URV|UpdateUserRPS account (UR_URV|VaultRPS))
+                ;;3]Returns Output Text
+                (format "Succesfully staked {} UrStoa to UrStoaVault" [urstoa-amount])
             )
         )
     )
-    (defun C_URV|Unstake (account:string urstoa-amount:decimal)
+    (defun C_URV|Unstake:string (account:string urstoa-amount:decimal)
         @doc "Unstakes URSTOA from the URSTOA-Vault; \
             \ Unstaking revokes STOA earnings from the 10% of the YANG Emissions"
         (with-capability (URV|UNSTAKE account urstoa-amount)
@@ -1539,23 +1479,31 @@
                     (remaining:decimal (- user-score urstoa-amount))
                 )
                 ;;1]Move URSTOA from Vault to the user
-                (C_UR|Transfer URV|KONTO account urstoa-amount)
+                (X_UR|Transfer URV|KONTO account (UR_UR|Guard account) urstoa-amount)
                 ;;2.1]Update Pending Rewards
                 (XI_URV|UpdatePendingRewards account)
                 ;;2.2]Update Vault and User Scores
                 (XI_URV|UpdateVaultScore urstoa-amount false)
                 (XI_URV|UpdateUserScore account urstoa-amount false)
-                ;;2.3]If remaining <user-score> becomes 0, decrement <nzs-count>
+                ;;2.3]If remaining <user-score> becomes 0: decrement <nzs-count>; also decrement <unclaimed-count> when account has no pending rewards (e.g. same-tx collect-then-unstake: they collected so nothing left to collect)
                 (if (= remaining 0.0)
-                    (XI_URV|UpdateNZS false)
+                    (do
+                        (XI_URV|UpdateNZS false)
+                        (if (= (UR_URV|UserPendingRewards account) 0.0)
+                            (XI_URV|UpdateUnclaimedCount false)
+                            true
+                        )
+                    )
                     true
                 )
                 ;;2.4]Update <last-rps> with the Vaults <current-rps>
                 (XI_URV|UpdateUserRPS account (UR_URV|VaultRPS))
+                ;;3]Returns Output Text
+                (format "Succesfully unstaked {} UrStoa from UrStoaVault" [urstoa-amount])
             )
         )
     )
-    (defun C_URV|Collect:decimal (account:string)
+    (defun C_URV|Collect:string (account:string)
         @doc "Collects ALL earnings generated by URSTOA Staking in the URSTOA-Vault"
         (with-capability (URV|COLLECT account)
             (let
@@ -1563,25 +1511,21 @@
                     (available-rewards:decimal (URC_URV|ClaimableRewards account))
                 )
                 ;;1]Collect STOA Rewards
-                (C_Transfer URV|KONTO account available-rewards)
+                (C_Transmit URV|KONTO account available-rewards)
                 ;;2]Resets <pending-rewards> to 0
                 (XI_URV|ResetPendingRewards account)
-                ;;3]Decrement <unclaimed-count>
-                (XI_URV|UpdateUnclaimedCount false)
+                ;;3]Decrement <unclaimed-count> only when account has no stake left (user-supply = 0): they have collected and no longer accrue; if they still have stake we do not decrement (they keep accruing)
+                (if (= (UR_URV|UserSupply account) 0.0)
+                    (XI_URV|UpdateUnclaimedCount false)
+                    true
+                )
                 ;;4]Update <last-rps> with the Vaults <current-rps>
                 (XI_URV|UpdateUserRPS account (UR_URV|VaultRPS))
                 ;;5]Update Vault Supply
                 (XI_URV|UpdateVaultSupply available-rewards false)
-                ;;6]Return Claimed Amount
-                available-rewards
+                ;;6]Returns Output Text
+                (format "Account {} succesfully collected {} STOA from the UrStoaVault" [account available-rewards])
             )
-        )
-    )
-    (defun URC_URV|ClaimableRewards:decimal (account:string)
-        @doc "Computes Claimable Reward of Account"
-        (if (= (UR_URV|VaultUnclaimedCount) 1)
-            (UR_URV|VaultSupply)
-            (URC_AvailableRewards account)
         )
     )
     ;;{F7}  [X]
@@ -1606,6 +1550,9 @@
                 {"user-supply"      : 1.0
                 ,"last-rps"         : 0.0
                 ,"pending-rewards"  : 0.0}
+            )
+            (with-capability (UR|CREDIT vault-account)
+                (X_UR|Credit vault-account vault-guard 1.0)
             )
             (with-capability (UPDATE-LOCAL-SUPPLY)
                 (X_UR|UpdateLocalSupply 1.0 true)
@@ -1731,12 +1678,3 @@
     )
     ;;
 )
-
-(create-table coin-table)           ;;Stores Stoa <balance> and <guard>
-(create-table LocalSupply)          ;;Stores Stoa <local-circulating>
-
-(create-table UR|StoaTable)         ;;Stores UrStoa <balance> and <guard>
-(create-table UR|LocalSupply)       ;;Stores UrStoa <local-circulating>
-
-(create-table URV|UrStoaVault)      ;;Stores UrStoaVault Data
-(create-table URV|UrStoaVaultUser)  ;;Stores UrStoaVault User Data
