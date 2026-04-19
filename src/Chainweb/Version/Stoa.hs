@@ -42,7 +42,9 @@ stoa = ChainwebVersion
     , _versionWindow = WindowWidth 120
     , _versionHeaderBaseSizeBytes = 318 - 110
     , _versionBootstraps = domainAddr2PeerInfo
-        [unsafeHostAddressFromText "node1.stoachain.com:1789"]
+        [ unsafeHostAddressFromText "node1.stoachain.com:1789"
+        , unsafeHostAddressFromText "node2.stoachain.com:1789"
+        ]
     , _versionGenesis = VersionGenesis
         { _genesisBlockTarget = AllChains $ HashTarget (maxBound `div` 100_000)
         , _genesisTime = AllChains $ BlockCreationTime [timeMicrosQQ| 2026-02-23T18:00:00.000000 |]
