@@ -1,0 +1,66 @@
+# Keep the Docker build context small and reproducible. Without this file,
+# `docker build` sends the entire repo (including multi-GB dist-newstyle and
+# local RocksDB databases) to the Docker daemon for every build.
+
+# Git
+.git
+.gitattributes
+.gitmodules
+
+# Haskell build artefacts (the container builds from source in a clean stage)
+dist
+dist-*
+dist-newstyle
+.stack-work
+cabal.project.local
+cabal.project.local~
+*.hi
+*.o
+*.chi
+*.chs.h
+*.dyn_o
+*.dyn_hi
+*.hp
+*.prof
+*.aux
+*.dump-hi
+*.eventlog
+*.hie
+.hpc
+.hsenv
+.cabal-sandbox
+cabal.sandbox.config
+.ghc.environment.*
+.ghci_history
+
+# Node-local runtime state — MUST NOT be baked into the image
+standalonedbs
+log
+cache
+report.html
+
+# IDE / editor / OS cruft
+.vscode
+.idea
+.direnv
+.envrc
+.DS_Store
+*~
+\#*
+TAGS
+tags
+ctags
+codex.tags
+
+# Docker / CI outputs
+result
+result-*
+.planning
+.claude
+
+# Nix
+.ghc.environment.*
+
+# Don't ignore what we explicitly need in the image
+!assets/*.png
+!assets/*.svg

@@ -370,3 +370,45 @@ RUN rm -f /tmp/run-tests /tmp/run-ea /tmp/run-bench
 #   done during the build?
 # - Just start the node on it?
 
+# ############################################################################ #
+# StoaChain Node — hub-driven container
+# ############################################################################ #
+#
+# Extends `chainweb-node` (untested, fast build) with a shell entrypoint that
+# translates environment variables into chainweb-node CLI flags. Designed for
+# orchestration by the Stoa Hub, which sets env vars and issues `docker run`
+# without needing to know the full chainweb-node --help surface.
+#
+# This is the DEFAULT target — because it's the last stage, a plain
+# `docker build .` produces the hub-ready image. The full, tested node image
+# is still available via `docker build --target chainweb-node-tested .`
+# (kept upstream-compatible — no behavioural changes to earlier stages).
+#
+# Build:
+#   docker build -t stoa-node:latest .
+#
+# Run (minimal):
+#   docker run -d --name stoa-node \
+#     -p 1789:1789 -p 1848:1848 \
+#     -v stoa-data:/data \
+#     -e P2P_HOSTNAME=node1.stoachain.com \
+#     stoa-node:latest
+#
+# Run (mining):
+#   docker run -d --name stoa-node \
+#     -p 1789:1789 -p 1848:1848 \
+#     -v stoa-data:/data \
+#     -e P2P_HOSTNAME=node1.stoachain.com \
+#     -e ENABLE_MINING=true \
+#     -e MINING_PUBKEY=<hex-pubkey> \
+#     stoa-node:latest
+#
+# Full env-var surface is documented at the top of docker/entrypoint.sh.
+
+FROM chainweb-node AS stoa-node
+COPY --chmod=0755 docker/entrypoint.sh /chainweb/entrypoint.sh
+VOLUME ["/data"]
+EXPOSE 1789 1848
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/chainweb/entrypoint.sh"]
+

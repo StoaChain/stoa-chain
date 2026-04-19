@@ -1,1 +1,8 @@
 *.hsig linguist-language=Haskell
+
+# Shell scripts and the entrypoint must keep LF line endings so they're
+# executable inside Linux containers regardless of the checkout platform.
+*.sh text eol=lf
+docker/entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
