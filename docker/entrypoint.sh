@@ -241,9 +241,15 @@ fi
 ARGS+=("$@")
 
 # GHC runtime flags go last (everything after +RTS is consumed by the runtime).
+#
+# Bash quirk: `${VAR:-"default with spaces"}` keeps the inner quotes even in
+# unquoted contexts, so `-T -N` would become ONE token. We assign the default
+# via `:=` first (which drops quotes), then use unquoted expansion so the
+# array gets populated with separate tokens for each RTS flag.
 if [[ "${RTS_ENABLED:-true}" == "true" ]]; then
+  : "${RTS_FLAGS:=-T -N}"
   # shellcheck disable=SC2206
-  RTS_ARR=(+RTS ${RTS_FLAGS:-"-T -N"})
+  RTS_ARR=(+RTS ${RTS_FLAGS})
 else
   RTS_ARR=()
 fi
