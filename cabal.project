@@ -85,6 +85,23 @@ package yet-another-logger
     flags: -tbmqueue
 
 -- -------------------------------------------------------------------------- --
+-- Pin crypton/memory/merkle-log to versions known-compatible with each other
+--
+-- crypton 1.0.5+ migrated from the legacy `memory` Haskell package to `ram`,
+-- which breaks merkle-log-0.2.0 (and by extension pact-tng-5.4) whose
+-- BA.ByteArrayAccess imports resolve against `memory`. Pinning crypton to
+-- 1.0.4 preserves the `memory` code path and lets the dep graph resolve.
+--
+-- These pins match the dep graph that kda-community/chainweb-node 3.1
+-- successfully built against (their cabal.project.freeze, Dec 2025) and
+-- that kadena-io/chainweb-node 2.32.0 originally built against. Safe for
+-- consensus — identical algorithm, identical hash outputs.
+constraints:
+    crypton == 1.0.4,
+    memory == 0.18.0,
+    merkle-log == 0.2.0
+
+-- -------------------------------------------------------------------------- --
 -- Source Repository Packages
 --
 -- In order to determine proper sha256 value each time the revision is
