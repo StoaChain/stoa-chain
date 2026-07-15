@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## New Claude session? Start here.
+
+This project is linked to Claudstermind at `../Claudstermind/`. Run the cluster-load skill:
+
+> Read `../Claudstermind/README.md` and load context for this project.
+
+See [`../Claudstermind/skills/load-cluster.md`](../Claudstermind/skills/load-cluster.md) for the full procedure. Claudstermind holds this project's onboarding, current state, and accumulated learnings (`projects/StoaChain/`) — always check there before re-briefing Claude. The `AncientStoa` branch also carries a [`HANDOFF.md`](HANDOFF.md) specific to the in-flight containerisation work.
+
 ## What this repo is
 
 This is **StoaChain** — a fork of Kadena's `chainweb-node` (a Haskell implementation of a braided Proof-of-Work parallel-chain blockchain). It is not vanilla Kadena: a new `ChainwebVersion` called **`stoa`** has been added alongside `mainnet01` / `testnet` / `development`, with its own genesis payloads, coin contract, miner-rewards schedule, and deployment targeting `node1.stoachain.com`.
