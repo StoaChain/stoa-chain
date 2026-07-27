@@ -50,6 +50,7 @@ import Chainweb.Difficulty
 import Chainweb.ForkState
 import Chainweb.Graph
 import Chainweb.HostAddress
+import Chainweb.Pact5.InitialGasModel
 import Chainweb.Pact.Utils
 import Chainweb.Time
 import Chainweb.Utils
@@ -161,6 +162,7 @@ testVersionTemplate v = v
     & versionWindow .~ WindowWidth 120
     & versionMaxBlockGasLimit .~ Bottom (minBound, Just 2_000_000)
     & versionSpvProofRootValidWindow .~ Bottom (minBound, Just 20)
+    & versionInitialGasModel .~ AllChains (Bottom (minBound, pre31GasModel))
     & versionBootstraps .~ [testBootstrapPeerInfos]
     & versionVerifierPluginNames .~ AllChains (Bottom (minBound, mempty))
     & versionForkNumber .~ 0
@@ -470,6 +472,10 @@ pact5InstantCpmTestVersion :: ChainGraph -> ChainwebVersion
 pact5InstantCpmTestVersion g = buildTestVersion $ \v -> v
     & cpmTestVersion g
     & versionName .~ ChainwebVersionName ("instant-pact5-CPM-" <> toText g)
+    -- Used to check gas for xChain --
+    & versionInitialGasModel .~ AllChains ( (ForkAtBlockHeight 5, post32GasModel) `Above`
+                                            (ForkAtBlockHeight 4, post31GasModel) `Above`
+                                            Bottom (minBound, pre31GasModel))
     & versionForks .~ tabulateHashMap (\case
         -- SPV Bridge is not in effect for Pact 5 yet.
         SPVBridge -> AllChains ForkNever
