@@ -43,6 +43,19 @@ stoa = ChainwebVersion
     -- to our entire chain, diverging replay. Set Chainweb32 explicitly to a
     -- future block height before taking waves 5 and 6.
     , _versionForks = tabulateHashMap $ \case
+        -- Chainweb32 gates the Pact 5.4.1 security fixes (issues #1 identity
+        -- forgery via the signer addr field, and #2 capability theft via
+        -- compose-capability). It MUST NOT be left on the wildcard below:
+        -- ForkAtGenesis is minBound, so the chainweb32 guard would read as
+        -- always-true and retroactively apply 5.4.1 semantics to our entire
+        -- history, recomputing results for every past transaction and
+        -- breaking replay.
+        --
+        -- ForkNever preserves current behaviour exactly. Before releasing
+        -- v3.2.1-stoa.1 this must become ForkAtBlockHeight <future height>,
+        -- chosen with margin over the live chain tip, and validated by the
+        -- replay gate in docs/stoa/container-build-plan.md.
+        Chainweb32 -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
     , _versionUpgrades = AllChains mempty
     , _versionGraphs = Bottom (minBound, petersenChainGraph)
