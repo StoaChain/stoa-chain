@@ -155,7 +155,8 @@ mainnet = ChainwebVersion
         Chainweb228Pact -> AllChains (ForkAtBlockHeight $ BlockHeight 5_659_280) -- 2025-03-18 00:00:00+00:00
         Chainweb230Pact -> AllChains (ForkAtBlockHeight $ BlockHeight 6_027_616) -- 2025-07-24 00:00:00+00:00
         Chainweb231Pact -> AllChains (ForkAtBlockHeight $ BlockHeight 6_269_344) -- 2025-10-16 00:00:00+00:00
-        Chainweb31 -> AllChains ForkNever
+        Chainweb31 -> AllChains (ForkAtBlockHeight $ BlockHeight 6_510_742) -- 2026-01-08 00:00:00+00:00
+        Chainweb32-> AllChains (ForkAtForkNumber 1)
 
     , _versionGraphs =
         (to20ChainsMainnet, twentyChainGraph) `Above`
@@ -167,10 +168,11 @@ mainnet = ChainwebVersion
         (succByHeight $ mainnet ^?! versionForks . at Chainweb216Pact . _Just . atChain (unsafeChainId 0), Just 180_000) `Above`
         Bottom (minBound, Nothing)
     , _versionInitialGasModel = AllChains $
-        (ForkNever, post32GasModel) `Above`
-        (succByHeight $ mainnet ^?! versionForks . at Chainweb231Pact . _Just . atChain (unsafeChainId 0), post31GasModel) `Above`
+        (mainnet ^?! versionForks . at Chainweb32 . _Just . atChain (unsafeChainId 0), post32GasModel) `Above`
+        (succByHeight $ mainnet ^?! versionForks . at Chainweb31 . _Just . atChain (unsafeChainId 0), post31GasModel) `Above`
         Bottom (minBound, pre31GasModel)
     , _versionSpvProofRootValidWindow =
+        (mainnet ^?! versionForks . at Chainweb32 . _Just . atChain (unsafeChainId 0), Just 525_600) `Above`
         (succByHeight $ mainnet ^?! versionForks . at Chainweb31 . _Just . atChain (unsafeChainId 0), Nothing) `Above`
         (succByHeight $ mainnet ^?! versionForks . at Chainweb231Pact . _Just . atChain (unsafeChainId 0) , Just 20_000) `Above`
         Bottom (minBound, Nothing)
@@ -235,7 +237,7 @@ mainnet = ChainwebVersion
             , (unsafeChainId 9, HM.fromList [((BlockHeight 4594049, TxBlockIdx 0), Gas 69_092)])
             ]
         }
-    , _versionForkNumber = 0
+    , _versionForkNumber = 1
     -- | A epoch is 120 * 120 block heights, which, on mainnet, is expected to be 5
     -- days.
     --

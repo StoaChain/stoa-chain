@@ -15,6 +15,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Chainweb.Test.Pact5.CmdBuilder where
 
@@ -44,10 +45,10 @@ import Pact.Core.Command.Crypto
 import Pact.Core.Command.Util
 import qualified Data.Text as T
 import Pact.Core.Names (Field(..))
-import Pact.Core.PactValue
+import Pact.Core.PactValue (pattern PString)
 import qualified Data.Set as Set
 import Chainweb.Pact.RestAPI.Server (validatePact5Command)
-import Pact.Core.Command.Client (ApiKeyPair (..), mkCommandWithDynKeys)
+import Pact.Core.Command.Client (ApiKeyPair (..), mkCommandWithDynKeys, PactValue(..))
 import System.Random
 import Control.Monad
 import Data.Vector qualified as Vector
