@@ -55,6 +55,18 @@ Work on a branch off `main`. Never on `main`.
 
 Option C is viable for a young private chain and would activate the fixes immediately — but only after scanning history for (a) any signer carrying an `addr` field, (b) any cross-module `compose-capability`. If both are absent, C replays identically. The replay test in §5 proves it either way.
 
+### 3a. Note on "just disable WebAuthn" as a shortcut
+
+Issues #1, #3 and #4 all require WebAuthn signatures, so blocking that scheme would mitigate all three at once. **But it is not the one-line change it appears to be.**
+
+`validPPKSchemes` is enforced **only on the Pact 4 code path** — all four call sites go through `Pact4.assertCommand` (`Pact/PactService.hs:820`, `Pact/RestAPI/Server.hs:721`, `Pact4/Validations.hs:92`, `Pact/PactService/Pact4/ExecBlock.hs:339`). Verified: `grep -rn "validPPKSchemes" src/Chainweb/Pact5/ src/Chainweb/Pact/PactService/Pact5/` returns **nothing**.
+
+StoaChain runs Pact 5 (all forks at genesis), where validation goes `validateParsedChainwebTx` → `checkTxSigs` → `assertValidateSigs` → `verifyUserSig`, which dispatches on `_siScheme` and accepts WebAuthn unconditionally. So setting `validPPKSchemes` to ED25519-only would **not** block WebAuthn on our chain.
+
+Blocking it requires our own patch to the Pact 5 validation path (a few lines rejecting `Just WebAuthn`), which is StoaChain-local divergence, still a consensus change, and still needs a fork gate and the full replay test.
+
+**Conclusion:** take the Pact 5.4.1 fixes as the primary remedy. If we are confident StoaChain will never use passkey signing, add the WebAuthn rejection to the *same* release as defence in depth — same fork, marginal extra work. Do not treat it as a faster alternative to the upgrade.
+
 ## 4. Build
 
 - [ ] `Dockerfile`: `ARG GHC_VERSION` 9.10.1 → **9.10.2** (3.2.1's freeze pins `base ==4.20.1.0`). Upstream's own Dockerfile still says 9.10.1 and contradicts its freeze — do not copy it.
