@@ -1,7 +1,14 @@
 # Chainweb Community Edition 3.2 — Technical Audit & StoaChain Upgrade Assessment
 
-**Date:** 2026-08-02 · **Auditor:** Claude Code (nectar multi-agent audit)
-**Subject:** `kda-community/chainweb-node` tag `3.2` (`eacb3cee`, published 2026-08-02 11:11 UTC)
+**Date:** 2026-08-02 · **Revised:** 2026-08-03 · **Auditor:** Claude Code (nectar multi-agent audit)
+**Subject:** `kda-community/chainweb-node` tags `3.2` (`eacb3cee`) and `3.2.1` (`d89bb530`)
+
+> **Revision note (2026-08-03).** Two things changed after the first version of this document:
+> 1. Upstream published the [Ad-Vitam Transparency Report](https://medium.com/@communitykadena/chainweb-3-2-ad-vitam-transparency-report-cfcfff237f43) disclosing four vulnerabilities, and released **3.2.1** with the complete Pact source. §2's blocking finding is **resolved**.
+> 2. That report's disclosure of Pact's CPU pricing rate (**1 gas per 2.5 µs**) **refutes** this audit's original HIGH finding that the WebAuthn gas constant was ~1000× too low. See §5.
+>
+> The per-issue breakdown with StoaChain exposure verdicts now lives in [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md). Fork voting is documented in [`miner-fork-voting.md`](miner-fork-voting.md).
+
 **Compared against:** StoaChain `main` @ `7c3400f`
 **Method:** full source clone, 110-commit diff review, 5 parallel specialist audits, all headline claims independently re-verified against code.
 
@@ -22,11 +29,15 @@
 | "Many bugs and security fixes" | **TRUE** — includes a real CVSS 9.1 CVE fix, undisclosed as such |
 | "Closes all already identified and never addressed issues" | **FALSE** — several acknowledged FIXMEs remain open in 3.2 |
 
-**Overall:** a substantive release with real security value, oversold in the marketing, and — critically — **not currently buildable from source.**
+**Overall:** a substantive release with real security value, oversold in the marketing. As of **3.2.1 (2026-08-03)** it is fully buildable from source and the four fixed vulnerabilities are disclosed — see [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) for the per-issue breakdown and StoaChain exposure verdicts.
 
 ---
 
-## 2. Blocking finding: 3.2 cannot be built from source
+## 2. ~~Blocking finding: 3.2 cannot be built from source~~ — RESOLVED 2026-08-03
+
+> **RESOLVED.** `kda-community/pact-5-special-fix` is now public, `kda-community/pact-5` carries a **`5.4.1`** tag (`72f42760`, verified `version: 5.4.1` and containing both fixes), and **chainweb 3.2.1** (4 files, 12 insertions) repoints the pin to that public tag. Upstream confirmed the embargo was deliberate: *"Chainweb 3.2 fixed several important vulnerabilities that we did not want to disclose before the hard fork."* The original finding is preserved below as the record of what was true on 2026-08-02.
+>
+> Residual: `pact`, `pact-5` and `merkle-log` still carry no `--sha256`, so Nix content-pinning remains incomplete for those three. Cabal builds are unaffected (git SHAs are content-addressed).
 
 `cabal.project` at tag 3.2 pins Pact to a repository that does not exist publicly:
 
@@ -156,7 +167,7 @@ post32       1.0   1.0   1.0      21.0      526.0        new
 
 | Sev | Finding |
 |---|---|
-| **HIGH** | **The WebAuthn price is internally inconsistent by ~1000×.** Verified verbatim: `ED25519 -> 21.0 -- Benchmarked at 52 ns` / `WebAuthn -> 526.0 -- Benchmarked at 1.315 ms`. At pact-core's ~2 ns/gas scale, ED25519 checks out (2.48 ns/gas); WebAuthn does not (2,500 ns/gas). Price ratio 25×, benchmark ratio 25,288×. The constant matches 1.315 **µs** — not physically plausible for a Haskell P-256 verify + JSON decode; 1.315 ms is. If the comment is right, 100 WebAuthn sigs buy ~131 ms of verification for 52,600 gas whose fair budget is ~130 µs — **the exact DoS this change was written to close, still open.** No test exercises WebAuthn pricing. |
+| ~~HIGH~~ **REFUTED** | ~~The WebAuthn price is internally inconsistent by ~1000×.~~ **This finding was wrong and is withdrawn.** The transparency report states Pact's CPU pricing rate explicitly: **1 gas per 2.5 µs**. Both constants are correct and mutually consistent at that rate — WebAuthn 1,315,000 ns ÷ 2,500 = **526** ✓, ED25519 52 µs ÷ 2.5 µs = 20.8 ≈ **21** ✓. The real defect is the source comment `-- Benchmarked at 52 ns`, which should read **52 µs**; a 52 ns Ed25519 verify is ~150 CPU cycles and physically impossible. The original finding inferred the scale from a pact-core comment and picked the wrong side of the inconsistency. **No re-benchmarking is required before enabling `post32`.** (Still true: no test exercises WebAuthn pricing.) |
 | **HIGH** | **Gas is charged after verification; the mempool applies no gas model at all.** `initialGasOf` appears in exactly two places, both post-`buyGas`. Signature verification runs on every mempool insert — unauthenticated, unmined, unpaid. `assertTxSize` (initial gas < gas limit) is **dead code in both Pact4 and Pact5** — verified zero call sites. This is a fee, not a rate limit. |
 | **HIGH** | **testnet04 + recapDevnet activate `post31` at the wrong fork** (`Chainweb231Pact` instead of `Chainweb31`). Since testnet04 has `Chainweb31 = ForkNever`, 3.1 never charged proof bytes there but 3.2 will from height 5,783,986 → payload-hash mismatch → replay failure. The release commit fixed mainnet and left both others wrong. |
 | **MED** | Mainnet `post31` activates one block later than 3.1 did (`succByHeight` keyed at 6,510,743 but consumed with the *parent* height). The sibling `_versionMaxBlockGasLimit` uses the same idiom with the *current* height — the two consumers disagree. |
@@ -344,13 +355,13 @@ Because our base `4aedec3bb` is a genuine ancestor of 3.2, upstream commits can 
 
 Our pin `kadena-io/pact-5@bfc5310c` reports `version: 5.4` — **we are already on Pact 5.4.** The gap to 5.4.1 is exactly one patch release, and that patch is the embargoed security fix. We are not generally behind on Pact.
 
-**Next — the full port.** The migration is genuinely tractable (110 commits, 15 conflicts, clean rollback) and gets us onto a maintained upstream. Gate it on Phase 1 (`pact-5-special-fix` access) and Phase 5 (replay validation).
+**Next — the full port.** The migration is genuinely tractable (110 commits, 15 conflicts, clean rollback) and gets us onto a maintained upstream. Phase 1 is now satisfied; the only remaining gate is Phase 5 (replay validation).
 
 **Worth taking:**
-- **The gas model.** Clean, version-parameterized, closes real under-metering. Re-benchmark the WebAuthn constant before enabling `post32`. Note our `_versionMaxBlockGasLimit = 2_000_000` (vs mainnet's 180,000) means the `(C/512)^7` penalty bites at a much larger transaction size — recompute our effective max tx size.
+- **The gas model.** Clean, version-parameterized, and it closes issues #3 and #4 (unmetered signature size and verification CPU). Both gas constants are correct as shipped \u2014 no re-benchmarking needed. Note our `_versionMaxBlockGasLimit = 2_000_000` (vs mainnet's 180,000) means the `(C/512)^7` penalty bites at a much larger transaction size — recompute our effective max tx size.
 - **Fork-number voting**, if we ever want more than one validator. Every adversarial finding in §3 is a mainnet-scale multi-miner problem; on a 10-chain network where we run the miners, `_versionForkVoteCastingLength` is just a knob. Set `Chainweb31/32 → ForkNever` for now and adopt later.
 
 **Not worth taking:**
 - **SPV expiry.** Keep `_versionSpvProofRootValidWindow = Bottom (minBound, Nothing)`. It buys us ~45 GB of header pruning we don't need at our chain size, in exchange for permanent X-chain fund destruction, a compaction/upgrade footgun that can fork a node off the network, and a feature untested on any public network. If we want a smaller DB, the `compact` tool already delivers ~90% of the saving today, on 2.32, with none of this.
 
-**Ask kda-community for:** the `pact-5-special-fix` tree; confirmation of the WebAuthn benchmark unit; and whether the testnet04/recapDevnet `post31` fork key is a known bug.
+**Ask kda-community:** whether the testnet04/recapDevnet `post31` fork key (`Chainweb231Pact` instead of `Chainweb31`) is a known bug \u2014 the other two questions were answered by the transparency report and the 3.2.1 release.
