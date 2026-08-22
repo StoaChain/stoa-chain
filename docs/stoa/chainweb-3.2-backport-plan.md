@@ -132,7 +132,8 @@ Conflicts cluster in exactly two places: (a) `Version.hs`/`Guards.hs` where our 
 **Path B (skip Wave 4 entirely):** `src/Chainweb/Pact5/InitialGasModel.hs` is self-contained and applies clean on its own. Port it and select the model with a plain `BlockHeight` guard instead of `Rule ForkHeight`. ~1 d, leaves `Version.hs` untouched.
 
 **Before enabling `post32`:**
-- **Re-benchmark WebAuthn.** The shipped constants are internally inconsistent: `ED25519 -> 21.0 -- 52 ns` checks out at ~2.5 ns/gas; `WebAuthn -> 526.0 -- 1.315 ms` implies 2,500 ns/gas — off by ~1000×. If the comment's unit is right, the constant undercharges WebAuthn by three orders of magnitude and leaves the exact DoS this change was meant to close wide open. No test covers it.
+- ~~Re-benchmark WebAuthn.~~ **Withdrawn 2026-08-03.** At the disclosed rate of 1 gas per 2.5 µs both constants are correct: WebAuthn 1,315,000 ns ÷ 2,500 = 526 ✓, ED25519 52 µs ÷ 2.5 µs ≈ 21 ✓. The source comment `-- Benchmarked at 52 ns` is the typo (should be 52 µs). Ship the constants as-is.
+- **This wave closes issues #3 and #4** — unmetered signature *size* and unmetered signature *verification CPU*. Both are live on StoaChain and our exposure is worse than mainnet's, because our block gas limit is ~10× theirs.
 - **Recompute our max transaction size.** The `(C/512)^7` penalty reaches our `_versionMaxBlockGasLimit = 2_000_000` at a very different point than mainnet's 180,000.
 - Gate it at a **future block height**, never at genesis — activating retroactively changes gas for historical transactions → payload-hash mismatch → replay failure.
 
@@ -140,16 +141,24 @@ Conflicts cluster in exactly two places: (a) `Version.hs`/`Guards.hs` where our 
 
 ---
 
-## Wave 6 — Pact 5.4.1 · blocked on publication
+## Wave 6 — Pact 5.4.1 · **UNBLOCKED 2026-08-03** · closes issues #1 and #2
 
-We are **already on Pact 5.4** (`bfc5310c` reports `version: 5.4`). The gap is one patch release containing the embargoed security fix.
+Source is public. `kda-community/pact-5` tag **`5.4.1`** = `72f427605406df61be8284091922f1fe1af7541b`, verified `version: 5.4.1` and containing both fixes. Chainweb **3.2.1** (`d89bb530`) pins exactly this.
 
-When `kda-community/pact-5-special-fix` (or an equivalent public tag) appears:
-1. Repoint the pact-5 `source-repository-package` and restore `--sha256`.
-2. Take `f3e097988`'s guard mechanism **only if** you also took Wave 4 — `guardDisablePact54FixFlags` needs `chainweb32`. Skip the mainnet quirk table entries; they are mainnet-history-only and irrelevant to our genesis.
-3. With `Chainweb32 → ForkNever`, 5.4.1 behaves exactly as 5.4 until you deliberately opt in. **Upgrading the dependency alone is consensus-neutral.**
+**This wave is the whole point of the exercise** — it closes issue #1 (identity forgery via `addr`, critical auth bypass) and issue #2 (capability theft via `compose-capability`). Both are live on StoaChain today.
 
-**Watch:** `git ls-remote https://github.com/kda-community/pact-5-special-fix` and the public `pact-5` tag list (currently stops at `5.4` / `5.4ce`).
+Steps:
+1. Repoint the pact-5 `source-repository-package` to `https://github.com/kda-community/pact-5` tag `72f42760…`. Note upstream ships **no `--sha256`** for `pact`, `pact-5` or `merkle-log`; generate ours with `nix-prefetch-git` if we care about the Nix path.
+2. Take `guardDisablePact54FixFlags` (`Pact5/TransactionExec.hs`) — it needs a `chainweb32` guard, so it depends on Wave 4 (or a height-gated equivalent).
+3. **Choose the activation point deliberately** — see the warning below. Skip the mainnet quirk table (`f3e097988`); it is mainnet-history-only and irrelevant to our genesis.
+
+> ### ⚠️ Do not activate the Pact fixes at genesis
+>
+> The fixes are gated by `FlagDisablePact54Fix`, which is *cleared* when `chainweb32` is true. Our wildcard fork table would make `Chainweb32 = ForkAtGenesis` — `minBound` — so `chainweb32` reads as **always true** and the fixed semantics would apply to our **entire history**. If any historical StoaChain transaction used an `addr` field or a cross-module `compose-capability`, replay diverges and the node rejects its own chain.
+>
+> Set `Chainweb32` to a **future block height** (or `ForkAtForkNumber 1` if adopting voting). History then replays under the old semantics, and only new blocks get the fix. This is exactly what upstream did.
+>
+> Alternative, if you want the fix live immediately: scan our chain for any transaction carrying a signer `addr` or a cross-module `compose-capability`. On a small private chain there are almost certainly none, in which case `ForkAtGenesis` replays identically — but the replay test must prove it rather than assuming.
 
 ---
 
@@ -205,6 +214,28 @@ Cutover must be **simultaneous** on node1 + node2 (`isAcceptedVersion` requires 
 | 3 — mempool | 1 commit, clean | no | 0.25 d |
 | 4 — ForkNumber *(optional)* | 16 commits, 8 conflicts | **yes** | 2–3 d |
 | 5 — gas model | 2 commits (or Path B) | **yes** | 1–2 d |
-| 6 — Pact 5.4.1 | dependency repin | no, until opted in | 0.5 d + blocked |
+| 6 — Pact 5.4.1 | dependency repin + fork gate | **yes** | 0.5–1 d |
 
-**Waves 0–3: ~2.5 days, no fork, no coordination, and it closes a CVSS 9.1 CVE plus a remote cut-flood DoS.** That is the high-value core; everything after it is optional and can be decided later.
+### Revised priority (2026-08-03)
+
+The transparency report changes the calculus. Waves 4–6 are no longer optional polish — **Wave 6 closes the two critical vulnerabilities (#1 identity forgery, #2 capability theft) that StoaChain is exposed to today**, and Wave 5 closes #3 and #4, where our exposure is worse than mainnet's.
+
+Recommended sequence:
+
+1. **Waves 0–3 first** (~2.5 d) — no fork, no coordination, closes #5 (CVSS 9.1 CVE), #6 (cut-flood DoS) and #8. Ship independently and immediately.
+2. **Waves 4 + 5 + 6 together** (~4–6 d) — one coordinated fork closing #1, #2, #3, #4. They share the ForkNumber plumbing and one activation point, so doing them as a single fork is both less work and less risk than three separate ones.
+
+Target **chainweb 3.2.1**, not 3.2 — same code, buildable from source.
+
+### Container build — everything needed is now available
+
+| Component | Source | Status |
+|---|---|---|
+| chainweb-node 3.2.1 | `kda-community/chainweb-node` tag `3.2.1` | public |
+| Pact 5.4.1 | `kda-community/pact-5` tag `72f42760` | public |
+| Pact 4 | `kda-community/pact` tag `ef859d8b` | public |
+| merkle-log | `kda-community/merkle-log` tag `c502176` | public, `src/` byte-identical to 0.2.0 |
+| all other pins | `kda-community/*` | public, `--sha256` present |
+| Dockerfile + `stoa-node` stage | ours | already in repo |
+
+Only change needed for the container: `ARG GHC_VERSION` 9.10.1 → **9.10.2** (3.2.1's freeze pins `base ==4.20.1.0`). Upstream's own Dockerfile still says 9.10.1 and contradicts its freeze — do not copy that.
