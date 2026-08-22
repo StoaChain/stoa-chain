@@ -56,7 +56,7 @@ Established by audit, all verified against source:
 
 ⇒ **No resync. No chain restart. A binary swap.** But note three constraints:
 
-1. **The cutover must be simultaneous on node1 and node2.** `isAcceptedVersion` requires peers ≥ `NodeVersion [3,0]`, so a 3.x node refuses to peer with an un-upgraded one. Stop both, swap, start both.
+1. **A rolling upgrade is fine — provided we do not cherry-pick `ade03946b`.** Our tree has `minAcceptedVersion = NodeVersion [1,2]` (`NodeVersion.hs:88`), so new and old Stoa nodes peer normally and the fleet can be updated node by node. The community version raises this to `>= [3,0]` with a hardcoded Kadena fork date, which *would* force a synchronised restart — another reason that commit stays on the do-not-take list. What still requires coordination is the **activation point**: every node must be on the new image before the fork height lands, or the stragglers stall.
 2. **Never activate the Pact fixes at genesis.** `ForkAtGenesis` is `minBound`, so `chainweb32` would read as always-true and apply the fixed semantics to our whole history — diverging replay if any historical transaction used the buggy paths. Gate at a **future block height** (or a fork number, if adopting voting).
 3. **Run the replay gate before production.** Boot the new binary against a *copy* of the live database with `--prune-chain-database=full`, then wipe only the Pact SQLite and let it replay from RocksDB. That is the one test that proves gas and Pact determinism against our real history.
 
