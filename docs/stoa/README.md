@@ -12,6 +12,7 @@ merges never touch these files.
 | [`chainweb-3.2-audit.md`](chainweb-3.2-audit.md) | Full technical audit of chainweb 3.2 / 3.2.1, every headline claim verified against source |
 | [`chainweb-3.2-backport-plan.md`](chainweb-3.2-backport-plan.md) | Wave-by-wave cherry-pick plan with measured (not estimated) conflict status per commit |
 | [`miner-fork-voting.md`](miner-fork-voting.md) | How miner fork voting actually works, and what it takes to adopt it for StoaChain |
+| [`container-build-plan.md`](container-build-plan.md) | Ordered task list for building and shipping the fixed `v3.2.1-stoa.1` container, including the test gates |
 
 ## Status as of 2026-08-03
 
