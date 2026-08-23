@@ -126,7 +126,7 @@ import qualified Network.HTTP.Client as HTTP
 import qualified Network.HTTP2.Client as HTTP2
 import Network.Socket (Socket)
 import Network.Wai
-import Network.Wai.Handler.Warp hiding (Port, Counter)
+import Network.Wai.Handler.Warp hiding (Port)
 import Network.Wai.Handler.WarpTLS (WarpTLSException(..))
 import Network.Wai.Middleware.RequestSizeLimit
 import Network.Wai.Middleware.Throttle
