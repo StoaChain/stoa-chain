@@ -92,7 +92,7 @@ import Pact.Core.ChainData (TxCreationTime(..))
 import Pact.Core.Command.Crypto (signEd25519, exportEd25519Signature, importEd25519KeyPair, PrivateKeyBS (..))
 import Pact.Core.Command.RPC (ContMsg (..))
 import Pact.Core.Command.Server qualified as Pact5
-import Pact.Core.Command.Types
+import Pact.Core.Command.Types hiding (ChainId)
 import Pact.Core.DefPacts.Types
 import Pact.Core.Errors
 import Pact.Core.Gas.Types
@@ -416,7 +416,7 @@ spvExpirationTest baseRdb _step = runResourceT $ do
 -- this test suite really wants you not to put any transactions into the final block.
 sendInvalidTxsTest :: RocksDb -> TestTree
 sendInvalidTxsTest rdb = withResourceT (mkFixture v rdb) $ \fx ->
-    sequentialTestGroup "invalid txs in /send" AllFinish
+    dependentTestGroup "invalid txs in /send" AllFinish
         [ testGroup "send txs"
             [ testCase "syntax error" $ do
                 cmdParseFailure <- buildTextCmd v
