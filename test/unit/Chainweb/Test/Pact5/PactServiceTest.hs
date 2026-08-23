@@ -750,7 +750,7 @@ v :: ChainwebVersion
 v = pact5InstantCpmTestVersion singletonChainGraph
 
 vPair :: ChainwebVersion
-vPair = pact5InstantCpmTestVersion False pairChainGraph
+vPair = pact5InstantCpmTestVersion pairChainGraph
 
 advanceAllChainsWithTxs :: Fixture -> ChainMap [Pact5.Transaction] -> IO (ChainMap (Vector TestPact5CommandResult))
 advanceAllChainsWithTxs fixture txsPerChain =
