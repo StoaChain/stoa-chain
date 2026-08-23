@@ -47,7 +47,7 @@
 # images.
 
 ARG UBUNTU_VERSION=22.04
-ARG GHC_VERSION=9.10.1
+ARG GHC_VERSION=9.10.2
 ARG PROJECT_NAME=chainweb
 
 # ############################################################################ #
