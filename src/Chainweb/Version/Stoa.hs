@@ -20,6 +20,7 @@ import Chainweb.Time
 import Chainweb.Utils
 import Chainweb.Utils.Rule
 import Chainweb.Version
+import Chainweb.Pact5.InitialGasModel
 
 import Pact.Types.Verifier
 
@@ -63,6 +64,13 @@ stoa = ChainwebVersion
 
     -- Hard cap at 2M gas per block (GAS-01)
     , _versionMaxBlockGasLimit = Bottom (minBound, Just 2_000_000)
+    -- Keep the pre-3.1 initial gas model at genesis: StoaChain has always
+    -- billed with the original formula, and changing it retroactively would
+    -- recompute gas for every historical transaction, moving payload hashes
+    -- and breaking replay. Activating post32GasModel (which closes issues #3
+    -- and #4 by charging signature size and verification CPU) must be done
+    -- with a rule keyed at a FUTURE block height, as its own decision.
+    , _versionInitialGasModel = AllChains $ Bottom (minBound, pre31GasModel)
     , _versionSpvProofRootValidWindow = Bottom (minBound, Nothing)
     , _versionCheats = VersionCheats
         { _disablePow = False
