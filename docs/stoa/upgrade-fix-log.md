@@ -14,7 +14,9 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 | 2 | `4ceb23b78` | 0 | **#5** | Update dependency bounds in the three `.cabal` files |
 | 3 | `7eaa8f8ea`, `83982b9fb`, `201f42ee5`, `4ffd21cd3` + fixup | 1 | — | Build compatibility for the new dependency graph |
 | 4 | `d9c91ff4c`, `1975d45c6`, `af4ab9fc8` | 2 | **#6** | Cut-queue duplicate-flood DoS fix |
-| 5 | *(see below)* | 3 | **#8** | Reject completed-defpact continuations at mempool pre-insert |
+| 5 | `5025933a4` | 3 | **#8** | Reject completed-defpact continuations at mempool pre-insert |
+| 6 | `cbc5ca363` | - | - | Dockerfile GHC 9.10.1 -> 9.10.2 |
+| 7 | `dddff65c6`, `ccf2baf4d` | - | - | Remove 5 redundant imports; **waves 0-3 compile and link** |
 
 ---
 
@@ -212,11 +214,86 @@ pact    -> ef859d8b  ("Update crypton, and replace memory by ram")
 
 Persistent caches live at `~/cwbuild/{cabal,dist,bin}` on the build host, so re-runs skip the clones and the Hackage index download.
 
-### Still not proven
+---
 
-Resolution is not compilation. **Nothing has been compiled yet** — the next milestone is a full build, which is also the first test of whether waves 0–3 actually typecheck together.
+## ✅ Fix 7 — waves 0–3 COMPILE AND LINK
 
-Note the plan still reports `chainweb-2.32.0` / `chainweb-node-2.32.0`: the version strings are hand-edited leftovers and are still on the to-do list.
+**`ccf2baf4d`.** After four build cycles, `chainweb-node` builds clean under `-Wall -Werror`:
+
+```
+[239 of 239] Compiling Chainweb.Chainweb
+[6 of 6] Linking .../chainweb-node
+BUILD_EXIT=0
+```
+
+And the binary runs:
+
+```
+$ chainweb-node --version
+chainweb-node-2.32.0 (package chainweb-node-2.32.0 revision ccf2baf4d-upgrade/chainweb-3.2.1)
+
+$ chainweb-node --chainweb-version stoa --print-config | grep chainwebVersion
+  chainwebVersion: stoa
+```
+
+The revision string confirms `node/Setup.hs` embedded our actual commit and branch, and the `stoa` version still registers and prints its configuration.
+
+### What this proves
+
+Every uncertain part of waves 0–3 survived GHC:
+
+- the **hand-resolved `readHighestCutHeaders'` conflict**, where upstream's community-fork rewind block was deliberately excluded
+- the **`Unzip` instance** required by SemiAlign 1.4
+- the **PQueue heap → keyed STM map** rewrite and the coupled `Priority` sign flip
+- **Pact 5.4.1** compiled and linked against our tree
+
+### Total code defects found: five redundant imports
+
+All were the same class — a cherry-picked patch removed the *usage* while the `import` line sat outside the hunk context, so git had no reason to touch it. `-Wall -Werror` caught every one:
+
+| File | Import | Why it went stale |
+|---|---|---|
+| `Chainweb.hs` | `hiding (Port, Counter)` | superseded by the qualified `Chainweb.Counter` import (`edcb1a426`) |
+| `Data/PQueue.hs` | `Data.Foldable` | `foldl'` moved to `Prelude` in base-4.20; PQueue rewrite dropped the rest |
+| `Pact5/Transaction.hs` | `Pact.Core.StableEncoding` | redundant under Pact 5.4.1 |
+| `Pact/Types.hs` | `Pact.Core.Hash` | redundant under Pact 5.4.1 |
+| `Pact/PactService.hs` | `Pact.Core.StableEncoding` | redundant under Pact 5.4.1 |
+
+All five files are now byte-identical to upstream 3.2.1, except `PactService.hs`, which differs by exactly one line — the wave 5 `initialGasOf` signature, correct to still differ.
+
+**Zero non-import errors.** No type errors, no missing instances, no signature mismatches.
+
+### Method note — finding them all in one pass
+
+Fixing these one build at a time cost a full chainweb recompile per line. The efficient move was a single diagnostic build with `--ghc-options=-Wwarn=unused-imports`, which downgrades that one warning so compilation continues past the first offender and reports every instance at once — and, more importantly, confirms whether anything *worse* is hiding behind them.
+
+A static shortcut (diff every file against upstream, flag extra imports) was tried first and **over-reports**: upstream is ahead of us by waves 4–6, so files they changed later legitimately differ. It flagged nine files where only three were real. GHC is the only reliable judge.
+
+### Four environment gaps — none from our tree
+
+| Gap | Cause | Fix |
+|---|---|---|
+| `setup.Cabal >= 3.14` unsatisfiable | `haskell:9.10.2` ships cabal-install 3.12.1.0 | installed 3.14.1.1 to `~/cwbuild/bin` |
+| `Missing C library: crypto` | base image lacks `libssl-dev` | apt list copied from the Dockerfile builder stage |
+| `dubious ownership in repository at '/src'` | container runs as root, `/src` owned by `ancientbox`; `node/Setup.hs` shells out to `git rev-parse` | `git config --global --add safe.directory /src` |
+| binary won't start outside the build image | linked against Debian's `libcrypto.so.1.1`; Ubuntu 22.04 ships OpenSSL 3 | n/a — see below |
+
+⚠️ **The ad-hoc binary is not deployable.** It was linked inside the Debian-based `haskell:9.10.2` image, so it depends on `libcrypto.so.1.1` and will not run on Ubuntu 22.04. This is an artefact of the ad-hoc build only — the real `Dockerfile` uses `ubuntu:${UBUNTU_VERSION}` for **both** the builder and runtime stages, so its output is correctly matched. This build's purpose was typechecking, and that succeeded.
+
+### Build recipe (reproducible)
+
+Script at `~/cwbuild/run-build.sh` on the build host. Caches at `~/cwbuild/{cabal,dist,bin}` so re-runs skip the Hackage index and the nine source-repository clones.
+
+```bash
+docker run -d --name cwbuild -v "$PWD":/src:ro -v ~/cwbuild:/build \
+  -e CABAL_DIR=/build/cabal -w /src haskell:9.10.2 /build/run-build.sh
+```
+
+**Use `--ghc-options=-j8`.** `cabal -j` parallelises across *packages*, which is useless once only `chainweb` remains — that stretch ran single-threaded at 101% CPU. With GHC-level parallelism it reached 506%.
+
+### Still to verify
+
+Version strings still read `2.32.0` — hand-edited leftovers, on the to-do list. And a compile is not a test run: the unit suites and the replay gate remain.
 
 ## Still to do
 
