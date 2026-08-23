@@ -158,22 +158,65 @@ with the new error constructor at `Mempool/Mempool.hs:245`.
 
 ---
 
-## Build verification — NOT YET RUN
+## Fix 6 — Dockerfile GHC 9.10.1 → 9.10.2
 
-Waves 0–3 are complete, but **nothing has been compiled**. The workstation used for this work has no GHC, cabal or docker on PATH, so dependency resolution could not be checked here.
+`cbc5ca363`. 3.2.1's `cabal.project.freeze` pins `base ==4.20.1.0`, which ships only with GHC 9.10.2. The Dockerfile declared 9.10.1 (line 50), so a container build would fail resolution.
 
-The open question is whether the solver actually selects the CVE fix. Run this wherever the toolchain lives:
+Upstream's own Dockerfile has the **same inconsistency** — declares 9.10.1 while shipping a freeze requiring 9.10.2 — so this must not be "fixed" by copying theirs.
+
+---
+
+## ✅ Build verification — DEPENDENCY RESOLUTION CONFIRMED
+
+**Run 2026-08-23 on the AncientIntel build host** (`ancientbox@bytales.duckdns.org:22222`, Ubuntu 26.04, 16 cores, 62 GB RAM). The repo is local to that machine at `/home/ancientbox/ClaudeWS/StoaChain/_infra/stoa-chain` — the same directory exported to Windows as `Z:`.
+
+No GHC or cabal on the host, so the check ran in a container:
 
 ```bash
-cabal update
-cabal build --dry-run chainweb 2>&1 | grep -i "crypton-x509-validation"
+docker run --rm -v "$PWD":/src:ro -v ~/cwbuild:/build \
+  -e CABAL_DIR=/build/cabal -w /src haskell:9.10.2 \
+  bash -c 'export PATH=/build/bin:$PATH; cabal build --dry-run chainweb --builddir=/build/dist'
 ```
 
-**Expect `crypton-x509-validation-1.9.1` or newer.** Anything older means issue #5 is still open despite fixes 1–2, and the bounds need revisiting before going further.
+### Result — issue #5 is genuinely closed
 
-Also expect the first resolution to be slow: `cabal.project` now points at nine `source-repository-package` entries, including the two StoaChain forks, all of which must be cloned.
+| Package | Resolved | Requirement |
+|---|---|---|
+| **`crypton-x509-validation`** | **1.9.1** | **the CVE-2026-9648 fix** ✅ |
+| `crypton` | 1.1.4 | `>= 1.1.2` ✅ |
+| `crypton-x509` | 1.9.1 | `>= 1.8` ✅ |
+| `crypton-asn1-types` | 0.4.1 | `>= 0.4.1` ✅ |
+| `crypton-asn1-encoding` | 0.10.0 | `>= 0.10.0` ✅ |
+| `merkle-log` | 0.2.1 | `>= 0.2.1` ✅ |
+| `ram` | 0.22.1 | `>= 0.2.2` ✅ |
+| `pact-tng` | **5.4.1** | carries fixes for #1, #2 ✅ |
+| `pact` | 4.13.2 | Pact 4 ✅ |
+| `tls` | 2.4.3 | ✅ |
 
-Known toolchain gap: the `Dockerfile` still specifies `ARG GHC_VERSION=9.10.1`, while 3.2.1's freeze pins `base ==4.20.1.0`, which ships with **GHC 9.10.2**. That needs changing before a container build — upstream's own Dockerfile has the same inconsistency, so do not copy theirs.
+Fixes 1–2 made the CVE fix *reachable*; this run proves it *resolves*. **Issue #5 verified closed.**
+
+### Both StoaChain forks validated
+
+All nine `source-repository-package` entries cloned successfully, including ours:
+
+```
+pact-5  -> 72f42760  ("Revamp CI")                          = tag 5.4.1
+pact    -> ef859d8b  ("Update crypton, and replace memory by ram")
+```
+
+### Two gotchas worth recording
+
+**cabal-install must be ≥ 3.14.** The `haskell:9.10.2` image ships cabal-install 3.12.1.0 with `Cabal-3.12.1.0`, but `node/chainweb-node.cabal:68` declares `custom-setup: Cabal >= 3.14`. The solver fails with `Cabal-7107` — *"constraint from maximum version of Cabal used by Setup.hs requires <3.14"*. This is a property of the **test image**, not our tree: the real Dockerfile does `ghcup install cabal latest`. For ad-hoc checks, install cabal-install 3.14.1.1 into the container first. This matches the note in `CLAUDE.md` that Cabal 3.10 will fail.
+
+**`cabal update` needs a writable cwd.** With the source mounted `:ro` it fails with `/src/dist-newstyle: createDirectory: permission denied`. Run `cabal update` from `/tmp` and pass `--builddir` to the build.
+
+Persistent caches live at `~/cwbuild/{cabal,dist,bin}` on the build host, so re-runs skip the clones and the Hackage index download.
+
+### Still not proven
+
+Resolution is not compilation. **Nothing has been compiled yet** — the next milestone is a full build, which is also the first test of whether waves 0–3 actually typecheck together.
+
+Note the plan still reports `chainweb-2.32.0` / `chainweb-node-2.32.0`: the version strings are hand-edited leftovers and are still on the to-do list.
 
 ## Still to do
 
