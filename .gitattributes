@@ -6,3 +6,10 @@
 docker/entrypoint.sh text eol=lf
 Dockerfile text eol=lf
 .dockerignore text eol=lf
+
+# rewards/miner_rewards.csv is embedded into the binary by Template Haskell
+# (embedFile) and its SHA-512 is pinned in src/Chainweb/MinerReward.hs. It
+# must stay LF on disk on every platform: a CRLF checkout changes the bytes,
+# the pinned hash check fails, and the node dies at coinbase with
+# "hash of raw miner rewards file does not match expected value".
+rewards/miner_rewards.csv text eol=lf
