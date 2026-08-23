@@ -295,6 +295,86 @@ docker run -d --name cwbuild -v "$PWD":/src:ro -v ~/cwbuild:/build \
 
 Version strings still read `2.32.0` — hand-edited leftovers, on the to-do list. And a compile is not a test run: the unit suites and the replay gate remain.
 
+## Fix 8 — test suite adapted to Pact 5.4.1 and the tasty bump
+
+**`21bffc7d6`.** The test suite did not build against the wave 0 dependency graph. Eleven fixes across 8 files, every one matching upstream 3.2.1's own resolution.
+
+| Issue | Files | Cause |
+|---|---|---|
+| `ChainId` ambiguity → `hiding (ChainId)` | 5 | Pact 5.4.1's `Pact.Core.Command.Types` now re-exports `ChainId`, colliding with `Chainweb.Version.ChainId` |
+| Redundant imports | 5 | `Pact.Core.Signer`, `Capabilities`, `StableEncoding`, `Verifiers`; `Pact.Core.Names` narrowed to `Field(..)` |
+| `sequentialTestGroup` deprecated | 1 | tasty bump; upstream fixed it in `5500e40ff` |
+
+`CmdBuilder.hs` was fixed surgically rather than taking upstream's version, which carries wave 5 changes (`PatternSynonyms`, `pattern PString`) we had not reached.
+
+**Method note worth keeping.** An early diagnostic pass used `--ghc-options=-Wwarn=unused-imports`, which downgrades only that one category. A `-Werror=deprecations` error then halted compilation before several modules were reached, so the "complete" list was not complete and three build cycles were spent on the same class of problem. **Use plain `-Wwarn`** to downgrade every category at once, then fix everything in one commit and restore `-Werror`.
+
+A second trap, hit three times: `grep '^import X$'` silently matches nothing on these CRLF files, because `$` will not match before `\r`. Use `\r*$` or `tr -d '\r'`.
+
+---
+
+## Fix 9 — Wave 4 · ForkNumber machinery
+
+**`e001e7673`** plus 17 cherry-picked commits (`4ded15d8a` … `52c1a46c2`). 13 applied clean, 4 auto-resolved. **Built clean on the first attempt.**
+
+### What landed
+
+- **`ForkHeight` gained `ForkAtForkNumber`** with a hand-written `Ord` instance ordering `ForkAtGenesis < FN 0 < any BlockHeight < FN ≥1 < ForkNever`
+- `maxBlockGasLimit`, `minimumBlockHeaderHistory` and `verifiersAt` became ForkNumber-aware, resolving height and fork number with `max`
+- Registry validation tightened: `validateNoForkAtZero`, `validateNoHeightAfterChainweb31`
+- Fork enum: `Chainweb232Pact` → `Chainweb31`; `Chainweb226Pact` and `Chainweb229Pact` deleted
+
+### Conflict rule — MigratePlatformShare
+
+All four conflicts had the same shape, so rather than hand-editing, the rule was encoded in a script (`resolve_mps.py`, kept in the session scratchpad):
+
+> **take upstream's side, drop every line naming `MigratePlatformShare`.**
+
+We deliberately do not take `3149131c8` ("Platform share migrate"), so that constructor does not exist in our tree. Upstream commits touching the Fork enum or per-version fork tables therefore conflict. Nine blocks and nine MPS lines were dropped in the first commit alone.
+
+Because the resolver takes "theirs" wholesale, the Stoa wiring was verified afterwards: all 7 `Registry.hs` insertion points and the `Configuration.hs` entry are intact.
+
+**Consequence worth stating plainly:** `MigratePlatformShare` now exists nowhere in the tree, so the `atNotGenesis` → `error "fork cannot be at genesis"` blocker is *permanently absent* rather than merely unhandled. The cost is one Fork constructor of divergence from upstream.
+
+### `Stoa.hs` changes
+
+| Field | Change |
+|---|---|
+| `_versionMinimumBlockHeaderHistory` | renamed to `_versionSpvProofRootValidWindow`; value stays `Bottom (minBound, Nothing)` — we do not adopt SPV expiry |
+| `_versionForkVoteCastingLength` | **added**, `120 * 119`. Reproduces the pre-wave-4 hardcoded `forkEpochLength = 120 * 120` bit-for-bit: 14,280 casting + 120 counting = 14,400 blocks = exactly 5 days at our 30 s delay |
+
+### ⚠️ Warning added at the wildcard fork table
+
+`Stoa.hs` maps **every** fork to `ForkAtGenesis` via a wildcard. That is correct for our history so far, but **not** for `Chainweb32`: `ForkAtGenesis` is `minBound`, so the `chainweb32` guard would read as always-true and retroactively apply Pact 5.4.1 semantics to the entire chain, diverging replay. A comment now says so at the exact line where someone would hit it.
+
+### Verified
+
+`BUILD_EXIT=0`, zero errors. Binary runs. `stoa` still registers — so it passes both new registry checks. `--mining-target-fork-override` is present, confirming the fork-voting machinery is live. Test suite also builds clean against wave 4 (`BUILD_TESTS_EXIT=0`), including the auto-resolved `TestVersions.hs`.
+
+---
+
+## Fix 10 — Wave 5 · gas model machinery
+
+`c13c0a1a1` (applied clean) and `460852eb1` (2 conflicts, resolved by hand — neither fitted the MPS rule).
+
+| File | Resolution |
+|---|---|
+| `TestVersions.hs` | upstream's line references a `migrate` flag from the skipped MigratePlatformShare commit **and** adds the gas-model rule. Kept our `versionName`, took their rule. |
+| `PactServiceTest.hs` | upstream's version predates our `hiding (ChainId)` fix and would have reverted it. Kept ours (upstream converges on the same thing later), took their added `Pact.Core.DefPacts.Types`. |
+
+**`Chainweb32` is not involved in wave 5** — verified zero references in both commits. It arrives with `eacb3ceee` in wave 6.
+
+### `Stoa.hs` — `_versionInitialGasModel = pre31GasModel`, deliberately
+
+```haskell
+, _versionInitialGasModel = AllChains $ Bottom (minBound, pre31GasModel)
+```
+
+StoaChain has always billed with the original formula. Activating `post32GasModel` retroactively would recompute gas for every historical transaction, moving payload hashes and breaking replay — the same trap as `Chainweb32`.
+
+> **Wave 5 installs the machinery; it does NOT close issues #3 and #4.**
+> Closing them means adding a rule keyed at a **future block height**, which is a release decision rather than a port step. Documented at the field.
+
 ## Still to do
 
 | Wave | Scope | Consensus? |
