@@ -13,6 +13,7 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 | 1 | `ce33454d3` | 0 | **#5** | Adopt 3.2.1 dependency graph; unblock CVE-2026-9648 |
 | 2 | `4ceb23b78` | 0 | **#5** | Update dependency bounds in the three `.cabal` files |
 | 3 | `7eaa8f8ea`, `83982b9fb`, `201f42ee5`, `4ffd21cd3` + fixup | 1 | — | Build compatibility for the new dependency graph |
+| 4 | `d9c91ff4c`, `1975d45c6`, `af4ab9fc8` | 2 | **#6** | Cut-queue duplicate-flood DoS fix |
 
 ---
 
@@ -92,6 +93,47 @@ Four upstream commits, cherry-picked directly (all applied clean), plus one fixu
 **Verified:** the `import` block of `src/Chainweb/Chainweb.hs` is now **byte-identical** to upstream 3.2.1. The only two remaining differences in that file are `maxBlockGasLimit v maxBound maxBound` (arrives in wave 4, ForkNumber signatures) and `readHighestCutHeaders mCutDb` (arrives in wave 2, `84e4eb6cb`) — both expected and scheduled.
 
 **If reverted:** the tree will not compile against the wave 0 dependency graph — `ChainMap`'s missing `Unzip` instance is a hard build failure under SemiAlign 1.4.
+
+## Fix 4 — Wave 2 · cut-queue duplicate-flood DoS
+
+**Closes issue #6.** Before this, `Data/PQueue.hs` was a `Data.Heap` of `Down CutHashes`. Equal cuts compare `EQ` and a heap admits duplicates, so `pQueueInsertLimit` could retain **N copies of a single attacker cut**, evicting every legitimate pending cut — and each copy re-triggers a full prerequisite header/payload fetch.
+
+Remotely reachable by an unauthenticated peer: `cutPutHandler` only checks that the **attacker-supplied** `_cutOrigin` address exists in the local peer DB, not that the requester *is* that peer. Bootstrap addresses are public and hard-coded.
+
+Applied in dependency order — `392c5b88d` conflicts standalone but goes clean once the other two land:
+
+| Commit | Upstream | What |
+|---|---|---|
+| `d9c91ff4c` | `84e4eb6cb` | More flexible `readHighestCutHeaders` — introduces `readHighestCutHeaders'` taking explicit args, with the old name kept as a `CutDb`-based wrapper |
+| `1975d45c6` | `5fd969c6c` | Cut queue buffer floor: `max 10 $ (order g ^ 2) * diameter g` |
+| `af4ab9fc8` | `392c5b88d` | **Disallow duplicate cuts** — heap replaced by a keyed STM map |
+
+### ⚠️ Conflict resolution — community-fork rewind deliberately excluded
+
+`84e4eb6cb` conflicted in `src/Chainweb/CutDB.hs` (one block). Upstream's version of `readInitialCut` contained **Kadena-mainnet community-fork rewind logic** — checking whether the node sits on the community fork at `RankedBlockHash 6335871` on chain 2, and forcing an initial height limit of `6335858 - 1` if not.
+
+That code arrived in `1286b1813` ("Rewind at startup if not on community fork"), which is on our **do-not-take** list, and which upstream themselves removed later in `828fc7038`. Our base predates 3.0, so we never had it.
+
+**Resolution:** kept our structure, adopted only the `readHighestCutHeaders'` rename. The result is semantically identical to upstream master's post-`828fc7038` form (branch order of `Just`/`Nothing` differs, which is immaterial in a Haskell `case`).
+
+**Safety checks after resolution:**
+- The cherry-pick added **no new imports**, and none of the community-fork-only symbols (`ancestorOfEntry`, `RankedBlockHash`, `unsafeChainId`, `_versionCode`) appear in an explicit import list — so no unused-import breakage under `-Wall -Werror`.
+- `readHighestCutHeaders` (unprimed) survives at `CutDB.hs:500`, now defined via the primed version, and its three call sites elsewhere still resolve.
+
+### Verified after the wave
+
+| Check | Result |
+|---|---|
+| Heap replaced by keyed STM map | `data PQueue a =` + `newEmptyPQueue getPrio getKey maybeMaxLen` |
+| Dedup active | `if S.member k s then return () else …` |
+| `Priority` sign flip at the production call site | `CutDB.hs:823` → `Priority (int (_cutHashesHeight hs))` (no negation) |
+| Buffer floor | `CutDB.hs:191` → `max 10 $ (order g ^ 2) * diameter g` |
+| Queue wired with weight + dedup key | `CutDB.hs:440` → `newEmptyPQueue _cutHashesWeight _cutHashesId …` |
+| `Chainweb.hs` vs upstream | now differs by **one line only** (`maxBlockGasLimit`, arrives wave 4) |
+
+**Known limitation, still open upstream:** this does **not** close the forged-weight flood. Dedup keys on `_cutHashesId` and priority on `_cutHashesWeight`, both attacker-supplied and unvalidated, so an attacker can still fill the buffer with *distinct* cuts claiming near-maximum weight. Upstream's own comment remains in the tree: *"FIXME: this is problematic. We should drop these much earlier before they are even added to the queue."*
+
+**If reverted:** issue #6 returns — an unauthenticated peer can evict all pending cuts. Note `af4ab9fc8` and the `Priority` sign flip are **coupled**: reverting one without the other inverts the header-fetch order.
 
 ## Still to do
 
