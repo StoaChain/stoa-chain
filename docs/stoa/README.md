@@ -39,11 +39,44 @@ behind every verdict.
 ## Plan
 
 Work happens on a dedicated branch off `main`, never on `main` directly.
-
-1. **Waves 0–3** (~2.5 d, no fork, no coordination) — closes #5 (CVSS 9.1 CVE), #6, #8.
-2. **Waves 4–6** (~4–6 d, one coordinated fork) — closes #1, #2, #3, #4.
+Current branch: **`upgrade/chainweb-3.2.1`**.
 
 Target **chainweb 3.2.1** (`d89bb530`) and **Pact 5.4.1** (`kda-community/pact-5` tag `72f42760`).
+
+### Release sequencing — decided 2026-08-23
+
+**One release, not two.** An interim security-only container carrying just waves 0–3 was
+considered and **rejected**: everything ships together, fully tested.
+
+| Release | Contents | Status |
+|---|---|---|
+| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **#1, #2, #3, #4, #5, #6, #8** | in progress |
+| **`v3.2.1-stoa.2`** | Minimum gas price floor (10,000 ANU at genesis, +1 ANU / 3 h, cap 400,000) | after stoa.1 is stable |
+
+The gas floor is deliberately a **separate release**. Its formula already exists in
+`pact/stoa-coin/new-coin.pact` (`UC_MinimumGasPriceANU`) but is currently dead code —
+nothing calls it, and chainweb's only floor is the per-node, mempool-only
+`_configMinGasPrice = 1e-8`. Making it consensus-enforced needs a `_versionMinGasPrice`
+rule checked in `validateParsedChainwebTx`. **No Pact fork is required** — gas price is
+transaction metadata validated by chainweb, not by the Pact interpreter.
+
+### Remaining work for `v3.2.1-stoa.1`
+
+| | Work | Closes |
+|---|---|---|
+| ✅ | Waves 0–3 | #5, #6, #8 |
+| ✅ | Dependency resolution verified (`crypton-x509-validation-1.9.1`) | — |
+| ⏳ | Full compile | — |
+| ☐ | Wave 4 — ForkNumber machinery | enables 5 & 6 |
+| ☐ | Wave 5 — gas model | **#3, #4** |
+| ☐ | Wave 6 — Pact 5.4.1 activation | **#1, #2** |
+| ☐ | `Stoa.hs` fields; `Chainweb31`/`Chainweb32`/`MigratePlatformShare` set **explicitly** | — |
+| ☐ | Version strings (`chainweb.cabal` still reads `2.32.0`) | — |
+| ☐ | Choose the activation block height | — |
+| ☐ | CRLF fix: `run-stoa.sh`, `deploy.sh`, `scripts/collectArtifacts.sh` | — |
+| ☐ | Replay against a copy of the live database | gate |
+| ☐ | Cloned 2-node network driven *through* the activation height | gate |
+| ☐ | `docker build` → GHCR | release |
 
 ## Upgrading the live network without breaking it
 
