@@ -14,6 +14,7 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 | 2 | `4ceb23b78` | 0 | **#5** | Update dependency bounds in the three `.cabal` files |
 | 3 | `7eaa8f8ea`, `83982b9fb`, `201f42ee5`, `4ffd21cd3` + fixup | 1 | — | Build compatibility for the new dependency graph |
 | 4 | `d9c91ff4c`, `1975d45c6`, `af4ab9fc8` | 2 | **#6** | Cut-queue duplicate-flood DoS fix |
+| 5 | *(see below)* | 3 | **#8** | Reject completed-defpact continuations at mempool pre-insert |
 
 ---
 
@@ -135,14 +136,54 @@ That code arrived in `1286b1813` ("Rewind at startup if not on community fork"),
 
 **If reverted:** issue #6 returns — an unauthenticated peer can evict all pending cuts. Note `af4ab9fc8` and the `Priority` sign flip are **coupled**: reverting one without the other inverts the header-fetch order.
 
+## Fix 5 — Wave 3 · completed-defpact continuations in the mempool
+
+**Closes issue #8.** Cherry-picked `1aa616ba0` — applied clean, 3 files, +58/−46.
+
+Pre-insert did not check whether a continuation targets a defpact that has **already completed**. An attacker could therefore fill mempools and blocks with guaranteed-failing cross-chain "finish" replays at minimal cost.
+
+The check reads the defpact state and rejects when it is complete (`PactService.hs:1207-1209`):
+
+```haskell
+let isComplete = defPactState == Just Nothing
+when isComplete $
+    throwError (InsertErrorDefPactComplete (sshow pactId))
+```
+
+with the new error constructor at `Mempool/Mempool.hs:245`.
+
+**Non-consensus.** This strictly *rejects more* at pre-insert; a node without it validates blocks identically. Safe to ship independently of any fork.
+
+**If reverted:** issue #8 returns — cheap mempool and block-space pollution.
+
+---
+
+## Build verification — NOT YET RUN
+
+Waves 0–3 are complete, but **nothing has been compiled**. The workstation used for this work has no GHC, cabal or docker on PATH, so dependency resolution could not be checked here.
+
+The open question is whether the solver actually selects the CVE fix. Run this wherever the toolchain lives:
+
+```bash
+cabal update
+cabal build --dry-run chainweb 2>&1 | grep -i "crypton-x509-validation"
+```
+
+**Expect `crypton-x509-validation-1.9.1` or newer.** Anything older means issue #5 is still open despite fixes 1–2, and the bounds need revisiting before going further.
+
+Also expect the first resolution to be slow: `cabal.project` now points at nine `source-repository-package` entries, including the two StoaChain forks, all of which must be cloned.
+
+Known toolchain gap: the `Dockerfile` still specifies `ARG GHC_VERSION=9.10.1`, while 3.2.1's freeze pins `base ==4.20.1.0`, which ships with **GHC 9.10.2**. That needs changing before a container build — upstream's own Dockerfile has the same inconsistency, so do not copy theirs.
+
 ## Still to do
 
 | Wave | Scope | Consensus? |
 |---|---|---|
-| 0 | ✅ complete after fix 2 | no |
-| 1 | Build compat: `37c28c7dc`, `0ebc2ba3a`, `4718f02a2`, `5cff7ad47` | no |
-| 2 | P2P/DoS: `84e4eb6cb`, `5fd969c6c`, `392c5b88d` → closes **#6** | no |
-| 3 | Mempool: `1aa616ba0` → closes **#8** | no |
+| 0 | ✅ **done** (fixes 1–2) → closes **#5** | no |
+| 1 | ✅ **done** (fix 3) — build compat | no |
+| 2 | ✅ **done** (fix 4) → closes **#6** | no |
+| 3 | ✅ **done** (fix 5) → closes **#8** | no |
+| — | ⏸ **Build verification** — must confirm `crypton-x509-validation >= 1.9.1` resolves | — |
 | 4 | ForkNumber machinery | **yes** |
 | 5 | Gas model → closes **#3**, **#4** | **yes** |
 | 6 | Pact 5.4.1 activation → closes **#1**, **#2** | **yes** |
