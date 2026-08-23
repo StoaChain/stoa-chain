@@ -11,7 +11,8 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 | # | Commit | Wave | Closes | Summary |
 |---|---|---|---|---|
 | 1 | `ce33454d3` | 0 | **#5** | Adopt 3.2.1 dependency graph; unblock CVE-2026-9648 |
-| 2 | *(this commit)* | 0 | **#5** | Update dependency bounds in the three `.cabal` files |
+| 2 | `4ceb23b78` | 0 | **#5** | Update dependency bounds in the three `.cabal` files |
+| 3 | `7eaa8f8ea`, `83982b9fb`, `201f42ee5`, `4ffd21cd3` + fixup | 1 | — | Build compatibility for the new dependency graph |
 
 ---
 
@@ -74,6 +75,23 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 **If reverted:** the solver falls back to the old bounds and `ram`-based crypton will not resolve, breaking the build.
 
 ---
+
+## Fix 3 — Wave 1 · build compatibility
+
+Four upstream commits, cherry-picked directly (all applied clean), plus one fixup to remove a Stoa-local hack that upstream had solved properly.
+
+| Commit | Upstream | What and why |
+|---|---|---|
+| `7eaa8f8ea` | `5cff7ad47` | Typo fixes across `BlockHeader/Validation.hs` and `ForkState.hs`. Cosmetic, taken to keep divergence at zero. |
+| `83982b9fb` | `37c28c7dc` | `ChainMap` gains an `Unzip` instance (`ChainId.hs`). **Required by SemiAlign 1.4**, which the new dependency graph from fixes 1–2 pulls in. Without it the library will not compile. |
+| `201f42ee5` | `0ebc2ba3a` | Import `Chainweb.Counter` qualified in `Chainweb.hs` instead of relying on a `hiding` clause. |
+| `4ffd21cd3` | `4718f02a2` | `Field` instances for `T4` in `Utils.hs`. |
+
+**Fixup — removed a Stoa-local hack.** Our `Chainweb.hs` carried `import Network.Wai.Handler.Warp hiding (Port, Counter)`; upstream has `hiding (Port)`. The cherry-pick of `0ebc2ba3a` added the qualified `Chainweb.Counter` import but left our extra `, Counter` in place, because the conflicting token was outside the patch context. With the qualified import present, hiding `Counter` from Warp is redundant divergence, so it was removed to match upstream exactly.
+
+**Verified:** the `import` block of `src/Chainweb/Chainweb.hs` is now **byte-identical** to upstream 3.2.1. The only two remaining differences in that file are `maxBlockGasLimit v maxBound maxBound` (arrives in wave 4, ForkNumber signatures) and `readHighestCutHeaders mCutDb` (arrives in wave 2, `84e4eb6cb`) — both expected and scheduled.
+
+**If reverted:** the tree will not compile against the wave 0 dependency graph — `ChainMap`'s missing `Unzip` instance is a hard build failure under SemiAlign 1.4.
 
 ## Still to do
 
