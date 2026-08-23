@@ -226,7 +226,8 @@ Note the plan still reports `chainweb-2.32.0` / `chainweb-node-2.32.0`: the vers
 | 1 | ✅ **done** (fix 3) — build compat | no |
 | 2 | ✅ **done** (fix 4) → closes **#6** | no |
 | 3 | ✅ **done** (fix 5) → closes **#8** | no |
-| — | ⏸ **Build verification** — must confirm `crypton-x509-validation >= 1.9.1` resolves | — |
+| — | ✅ **Dependency resolution verified** — `crypton-x509-validation-1.9.1` confirmed, issue **#5** closed | — |
+| — | ⏸ **Full compile** — not yet attempted; first real test that waves 0–3 typecheck together | — |
 | 4 | ForkNumber machinery | **yes** |
 | 5 | Gas model → closes **#3**, **#4** | **yes** |
 | 6 | Pact 5.4.1 activation → closes **#1**, **#2** | **yes** |
