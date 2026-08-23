@@ -375,8 +375,8 @@ library
     build-depends:
         , Decimal >= 0.4.2
         , aeson >= 2.2
-        , crypton-asn1-encoding >=0.9
-        , crypton-asn1-types >=0.3
+        , crypton-asn1-encoding >= 0.10.0
+        , crypton-asn1-types >= 0.4.1
         , async >= 2.2
         , attoparsec >= 0.13
         , base >= 4.12 && < 5
@@ -391,9 +391,9 @@ library
         , clock >= 0.7
         , configuration-tools >= 0.6
         , containers >= 0.5
-        , crypton >= 0.31
+        , crypton >= 1.1.2
         , crypton-connection >= 0.4.2
-        , crypton-x509 >=1.7
+        , crypton-x509 >= 1.8
         , crypton-x509-system >=1.6
         , crypton-x509-validation >=1.6
         , cuckoo >= 0.3
@@ -412,7 +412,7 @@ library
         , growable-vector >= 0.1
         , hashable >= 1.4
         , heaps >= 0.3
-        , time-hourglass >=0.3
+        , time-hourglass >=0.2
         , http2 >= 5.2.1
         , http-client >= 0.5
         , http-client-tls >=0.3
@@ -422,8 +422,8 @@ library
         , ixset-typed >= 0.4
         , lens >= 4.17
         , loglevel >= 0.1
-        , memory >=0.14
-        , merkle-log >=0.2
+        , ram >=0.2.2
+        , merkle-log >=0.2.1
         , mmorph >= 1.1
         , monad-control >= 1.0
         , mtl >= 2.3
@@ -543,7 +543,7 @@ library chainweb-test-utils
         , chainweb-storage >= 0.1
         , chronos >= 1.1
         , containers >= 0.5
-        , crypton >= 0.31
+        , crypton >= 1.1.2
         , crypton-connection >=0.4
         , data-dword >= 0.3
         , deepseq >= 1.4
@@ -555,7 +555,7 @@ library chainweb-test-utils
         , http-types >= 0.12
         , lens >= 4.17
         , loglevel >= 0.1
-        , merkle-log >=0.2
+        , merkle-log >=0.2.1
         , mtl >= 2.3
         , network >= 3.1.2
         , patience >= 0.3
@@ -702,7 +702,7 @@ test-suite chainweb-tests
         , cassava >= 0.5.1
         , chainweb-storage >= 0.1
         , containers >= 0.5
-        , crypton >= 0.31
+        , crypton >= 1.1.2
         , crypton-connection >=0.4
         , data-dword >= 0.3
         , data-ordlist >= 0.4.7
@@ -720,8 +720,8 @@ test-suite chainweb-tests
         , lens >= 4.17
         , lens-aeson >= 1.2.2
         , loglevel >= 0.1
-        , memory >=0.14
-        , merkle-log >=0.2
+        , ram >=0.2.2
+        , merkle-log >=0.2.1
         , mtl >= 2.3
         , network >= 3.1.2
         , pact
