@@ -34,6 +34,13 @@ stoa :: ChainwebVersion
 stoa = ChainwebVersion
     { _versionCode = ChainwebVersionCode 0x0000_000A
     , _versionName = ChainwebVersionName "stoa"
+    -- WARNING: this wildcard puts EVERY fork at genesis, including any new
+    -- Fork constructor a future upstream port introduces. That is correct for
+    -- StoaChain's history so far, but it is NOT safe for `Chainweb32` when
+    -- that arrives: ForkAtGenesis is `minBound`, so the `chainweb32` guard
+    -- would read as always-true and retroactively apply Pact 5.4.1 semantics
+    -- to our entire chain, diverging replay. Set Chainweb32 explicitly to a
+    -- future block height before taking waves 5 and 6.
     , _versionForks = tabulateHashMap $ \case
         _ -> AllChains ForkAtGenesis
     , _versionUpgrades = AllChains mempty
@@ -56,7 +63,7 @@ stoa = ChainwebVersion
 
     -- Hard cap at 2M gas per block (GAS-01)
     , _versionMaxBlockGasLimit = Bottom (minBound, Just 2_000_000)
-    , _versionMinimumBlockHeaderHistory = Bottom (minBound, Nothing)
+    , _versionSpvProofRootValidWindow = Bottom (minBound, Nothing)
     , _versionCheats = VersionCheats
         { _disablePow = False
         , _fakeFirstEpochStart = True
@@ -70,4 +77,9 @@ stoa = ChainwebVersion
         (minBound, Set.fromList $ map VerifierName ["hyperlane_v3_message", "allow", "signed_list"])
     , _versionQuirks = noQuirks
     , _versionForkNumber = 0
+    -- Fork-vote epoch: 120 * 119 casting blocks + 120 counting = 14,400
+    -- blocks. At our 30 s block delay that is exactly 5 days, matching
+    -- every upstream version. Reproduces the pre-wave-4 hardcoded
+    -- forkEpochLength = 120 * 120 bit-for-bit.
+    , _versionForkVoteCastingLength = 120 * 119
     }
