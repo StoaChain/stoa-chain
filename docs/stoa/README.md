@@ -42,6 +42,23 @@ than Kadena mainnet's, because our block gas limit is roughly 10× theirs.
 See [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) for the evidence
 behind every verdict.
 
+### Merge to `main` — deliberately deferred
+
+`main` still holds the pre-upgrade (2.32.0) tree. The merge is **deferred until
+after block 525,000 has passed in production and the fork is confirmed healthy**,
+decided 2026-08-24.
+
+The reasoning: leaving `main` untouched keeps a clean, known-good rollback point
+for as long as a rollback is still possible. Rollback stops being possible once
+525,000 passes, which is exactly when the merge becomes safe to do.
+
+Two consequences to be aware of in the meantime:
+
+1. Anyone cloning `main` builds a node that will stall at 525,000.
+2. The GHCR package page renders the README from the **default branch**, so it
+   shows the upstream Kadena README rather than [`CONTAINER-README.md`](CONTAINER-README.md).
+   The Release page carries the correct documentation.
+
 ## Plan
 
 Work happened on a dedicated branch off `main`, never on `main` directly:
