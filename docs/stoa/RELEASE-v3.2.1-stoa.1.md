@@ -315,10 +315,48 @@ genuinely needs PoW off must set `_disablePow = True` in
 | Dependency resolution — `crypton-x509-validation-1.9.1` | ✅ verified |
 | Unit suite builds | ✅ |
 | Unit suite runs | ⚠️ 21/1441 fail — all trace to pre-existing Stoa/Kadena divergence on code paths we do not execute; see below |
-| Replay against real chain history | ⏳ pending |
-| Live block extension under mining | ⏳ pending |
-| Fork transition rehearsal | ⏳ pending |
-| Old-node stall behaviour | ⏳ pending |
+| Replay against real chain history | ✅ 508,079 blocks replayed from wiped Pact state; all 10 chains matched target hashes byte-for-byte |
+| Live block extension under mining | ✅ ~180 blocks mined across all 10 chains, 0 errors; coinbase credited at 0.478482 ANU/block |
+| Fork transition rehearsal | ✅ all 10 chains crossed the activation height and kept producing; 0 errors |
+| Gas model engages at the fork | ✅ measured — see below |
+| Old-node stall behaviour | ⚠️ resolved analytically, not empirically — see "What an un-upgraded node actually does" |
+| Image healthcheck | ✅ `healthy` (the published image never could — see fix 13) |
+| Image provenance | ✅ OCI labels carry version + git SHA |
+
+### Fork transition rehearsal — method and result
+
+Testing at the real activation height was impossible: the chain tip was ~508,080
+and 525,000 is 17,000 blocks away. So the rehearsal used a purpose-built image,
+`stoa-node:TESTONLY-fork2`, identical to the release build except for a
+three-line patch — activation and gas-model transition moved from 525,000 to
+**508,090**, and `_disablePow = True`. It was run against a copy of real chain
+state taken from a live slave's backup API, on an `--internal` Docker network so
+it could never reach the production network. The patch was reverted immediately
+after the build; the release image is built from an unmodified tree.
+
+That the patch actually reached the binary was confirmed independently, before
+drawing any conclusions from the run: `/info` reported
+`nodeLatestBehaviorHeight = 508091`.
+
+**Result.** The node mined from 508,078 to 508,096 on all ten chains — through
+and past the activation height — with **zero errors** and no
+`InvalidSolvedHeader`, no payload-hash mismatch, and no stall. The coinbase kept
+paying across the boundary (miner balance on chain 0 reached exactly
+19 × 0.478482 ANU).
+
+**Gas model.** Measured with `/local?preflight=true`, which runs the same
+`initialGasOf` the block executor uses, against `stoa-foundation` on chain 0:
+
+| signers | pre-fork (exec height 508,080) | post-fork (exec height 508,090) | delta |
+|---|---|---|---|
+| 1 | 87 | **109** | +22 |
+| 2 | 88 | **132** | +44 |
+
+Both deltas match `post32GasModel` exactly: `21` per ED25519 signer plus
+`0.01 × sigsSize` (138 and 276 bytes), with `ceiling` applied to the total. The
+marginal cost of a second signer went from **+1** gas (only the raw payload grew)
+to **+23**. This is the direct evidence that issues **#3**, **#4** and **#7** are
+closed at the fork and not merely wired up.
 
 **On the 21 test failures.** All golden files are byte-identical to upstream's, yet
 our tree diverges from upstream in 28 genesis payload modules, 17 transaction
