@@ -17,22 +17,26 @@ merges never touch these files.
 | [`CONTAINER-README.md`](CONTAINER-README.md) | **Package README for `ghcr.io/stoachain/stoa-node`** — what the container fixes, the 525,000 activation, how to verify and upgrade |
 | [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md) | **Operator-facing release notes** — what ships, the 525,000 activation, how to verify a node is really upgraded, and the full verification record |
 
-## Status as of 2026-08-03
+## Status as of 2026-08-24 — `v3.2.1-stoa.1` SHIPPED
 
-**The upgrade is no longer blocked, and it is no longer optional.**
+The container is published and `:latest` points at it:
 
-On 2026-08-02 upstream published the
-[Ad-Vitam Transparency Report](https://medium.com/@communitykadena/chainweb-3-2-ad-vitam-transparency-report-cfcfff237f43),
-disclosing four vulnerabilities that 3.2 fixed, and released **chainweb 3.2.1** with the
-complete Pact source. Everything is now public and buildable.
+```
+ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+ghcr.io/stoachain/stoa-node:latest        (same digest)
+```
 
-**StoaChain is exposed to 7 of the 14 catalogued issues**, including two that permit outright
-theft:
+**Every node must be on it before block 525,000**, when issues #1, #2, #3, #4
+and #7 activate together. Issues #5, #6 and #8 are live as soon as the container
+starts. See [`CONTAINER-README.md`](CONTAINER-README.md) for the operator view.
+
+**StoaChain was exposed to 8 of the 14 catalogued issues**, including two that
+permit outright theft:
 
 - **#1 Identity forgery via the `addr` field** — a WebAuthn signer with a forged `addr` impersonates any ED25519 keyset holder. Complete authentication bypass.
 - **#2 Capability theft via `compose-capability`** — any module can acquire another module's capabilities.
 
-On **#3** and **#4** (unmetered signature size and verification CPU) our exposure is *worse*
+On **#3** and **#4** (unmetered signature size and verification CPU) our exposure was *worse*
 than Kadena mainnet's, because our block gas limit is roughly 10× theirs.
 
 See [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) for the evidence
@@ -40,10 +44,11 @@ behind every verdict.
 
 ## Plan
 
-Work happens on a dedicated branch off `main`, never on `main` directly.
-Current branch: **`upgrade/chainweb-3.2.1`**.
+Work happened on a dedicated branch off `main`, never on `main` directly:
+**`upgrade/chainweb-3.2.1`**.
 
-Target **chainweb 3.2.1** (`d89bb530`) and **Pact 5.4.1** (`kda-community/pact-5` tag `72f42760`).
+Built against **chainweb 3.2.1** (`d89bb530`) and **Pact 5.4.1**
+(`StoaChain/pact-5` tag `72f42760`).
 
 ### Release sequencing — decided 2026-08-23
 
@@ -52,8 +57,8 @@ considered and **rejected**: everything ships together, fully tested.
 
 | Release | Contents | Status |
 |---|---|---|
-| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **#1, #2, #3, #4, #5, #6, #8** | in progress |
-| **`v3.2.1-stoa.2`** | Minimum gas price floor (10,000 ANU at genesis, +1 ANU / 3 h, cap 400,000) | after stoa.1 is stable |
+| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **#1, #2, #3, #4, #5, #6, #7, #8** | ✅ **published 2026-08-24** |
+| **`v3.2.1-stoa.2`** | Minimum gas price floor (10,000 ANU at genesis, +1 ANU / 3 h, cap 400,000) | next |
 
 The gas floor is deliberately a **separate release**. Its formula already exists in
 `pact/stoa-coin/new-coin.pact` (`UC_MinimumGasPriceANU`) but is currently dead code —
@@ -62,23 +67,28 @@ nothing calls it, and chainweb's only floor is the per-node, mempool-only
 rule checked in `validateParsedChainwebTx`. **No Pact fork is required** — gas price is
 transaction metadata validated by chainweb, not by the Pact interpreter.
 
-### Remaining work for `v3.2.1-stoa.1`
+### What shipped in `v3.2.1-stoa.1`
 
 | | Work | Closes |
 |---|---|---|
-| ✅ | Waves 0–3 | #5, #6, #8 |
-| ✅ | Dependency resolution verified (`crypton-x509-validation-1.9.1`) | — |
-| ⏳ | Full compile | — |
-| ☐ | Wave 4 — ForkNumber machinery | enables 5 & 6 |
-| ☐ | Wave 5 — gas model | **#3, #4** |
-| ☐ | Wave 6 — Pact 5.4.1 activation | **#1, #2** |
-| ☐ | `Stoa.hs` fields; `Chainweb31`/`Chainweb32`/`MigratePlatformShare` set **explicitly** | — |
-| ☐ | Version strings (`chainweb.cabal` still reads `2.32.0`) | — |
-| ☐ | Choose the activation block height | — |
-| ☐ | CRLF fix: `run-stoa.sh`, `deploy.sh`, `scripts/collectArtifacts.sh` | — |
-| ☐ | Replay against a copy of the live database | gate |
-| ☐ | Cloned 2-node network driven *through* the activation height | gate |
-| ☐ | `docker build` → GHCR | release |
+| ✅ | Waves 0–3 — deps, cut-queue, mempool | #5, #6, #8 |
+| ✅ | Wave 4 — ForkNumber machinery | enables 5 & 6 |
+| ✅ | Wave 5 — gas model | **#3, #4, #7** |
+| ✅ | Wave 6 — Pact 5.4.1 activation | **#1, #2** |
+| ✅ | `Stoa.hs` — `Chainweb32` set explicitly above the wildcard | — |
+| ✅ | Version strings → `3.2.1` | — |
+| ✅ | Activation height chosen: **525,000, all chains** | — |
+| ✅ | CRLF fix via `.gitattributes` — also caught a shipping-blocker in `miner_rewards.csv` | — |
+| ✅ | Container provenance via OCI labels | — |
+| ✅ | Image HEALTHCHECK made functional | — |
+| ✅ | Replay against a copy of the live database — 508,079 blocks, all 10 chains hash-exact | gate |
+| ✅ | Node driven *through* the activation height — all 10 chains, zero errors | gate |
+| ✅ | Gas model measured at the boundary: 87→109 / 88→132 | gate |
+| ✅ | `docker build` → GHCR, `:latest` moved | release |
+
+One item is **not** empirically demonstrated: the disclosed exploits being *rejected*
+post-fork. The rehearsal chain has no funded signing key, so no adversarial transaction
+could be crafted. That rests on upstream Pact 5.4.1 plus the unit suite.
 
 ## Upgrading the live network without breaking it
 
