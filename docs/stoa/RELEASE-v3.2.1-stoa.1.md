@@ -214,6 +214,45 @@ buildable state of the repository, independent of any security consideration.
 
 Nodes may be rolled one at a time; old and new peer normally below the fork height.
 
+### What an un-upgraded node actually does at 525,000 — read this
+
+**It does not stop at 525,000.** Auditing every guard on the `Chainweb32` fork
+turned up exactly one execution site:
+
+```haskell
+-- src/Chainweb/Pact5/TransactionExec.hs:1041
+guardDisablePact54FixFlags txCtx
+  | guardCtx' chainweb32 txCtx = Set.empty
+  | otherwise = Set.singleton FlagDisablePact54Fix
+```
+
+and that flag set is consumed only by `applyCmd` and `applyLocal`. `applyCoinbase`
+(line 478), `buyGas` (769) and `redeemGas` (881) take
+`guardDisablePact52And53Flags` only, and are therefore untouched by this fork.
+The gas-model rule keyed at the same height changes `initialGasOf`, which is
+applied to **transactions** and not to the coinbase.
+
+The consequence:
+
+| Post-fork block contains | Old node |
+|---|---|
+| coinbase only (an idle chain) | **accepts it** — output is byte-identical under both rule sets |
+| one or more transactions | **rejects it** — `initialGasOf` differs, so the command result's gas differs, so the outputs hash differs, so the payload hash does not match the header |
+
+So an un-upgraded node sails past 525,000 looking perfectly healthy and then
+stalls at the **first post-fork block carrying a transaction** — which could be
+seconds or hours later, depending on network activity. Its cut simply stops
+advancing on the affected chain; if it is mining it starts building a minority
+chain.
+
+Operationally this means two things:
+
+1. The deadline is still 525,000. You cannot predict when the first post-fork
+   transaction lands, so there is no safe margin past the fork height.
+2. **Do not use "the node is still following the chain" as evidence that it is
+   upgraded.** Use `/info` → `nodeLatestBehaviorHeight == 525001`. An old node
+   gives no error and no log line at 525,000.
+
 ### Verifying a node
 
 **Do not rely on `chainweb-node --version` for provenance.** `.dockerignore`
