@@ -407,6 +407,31 @@ RUN rm -f /tmp/run-tests /tmp/run-ea /tmp/run-bench
 
 FROM chainweb-node AS stoa-node
 COPY --chmod=0755 docker/entrypoint.sh /chainweb/entrypoint.sh
+
+# `.dockerignore` excludes `.git` (it would add ~1 GB to every build context),
+# so the revision that `chainweb-node --version` prints is an empty string.
+# Carry provenance in OCI labels instead, supplied at build time:
+#
+#   docker build --target stoa-node -t stoa-node:v3.2.1-stoa.1 \
+#     --build-arg STOA_VERSION=v3.2.1-stoa.1 \
+#     --build-arg STOA_REVISION="$(git rev-parse HEAD)" .
+#
+# Operators verify a pulled image without starting it:
+#
+#   docker inspect --format \
+#     '{{index .Config.Labels "org.opencontainers.image.revision"}}' <image>
+#
+# and verify the compiled consensus rules from a *running* node with
+# `GET /info` -> `nodeLatestBehaviorHeight`, which is the highest fork height
+# baked into the version table plus one (525001 for v3.2.1-stoa.1).
+ARG STOA_VERSION=dev
+ARG STOA_REVISION=unknown
+LABEL org.opencontainers.image.title="StoaChain node"
+LABEL org.opencontainers.image.description="chainweb-node built for the StoaChain (stoa) network"
+LABEL org.opencontainers.image.source="https://github.com/StoaChain/stoa-chain"
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
+LABEL org.opencontainers.image.version="${STOA_VERSION}"
+LABEL org.opencontainers.image.revision="${STOA_REVISION}"
 VOLUME ["/data"]
 EXPOSE 1789 1848
 STOPSIGNAL SIGTERM

@@ -390,3 +390,129 @@ StoaChain has always billed with the original formula. Activating `post32GasMode
 | 6 | Pact 5.4.1 activation → closes **#1**, **#2** | **yes** |
 
 Then: version strings (`chainweb.cabal` still reads `2.32.0`, which was hand-edited and never accurate), `Stoa.hs` field updates, GHC 9.10.1 → 9.10.2, and the test gates in [`container-build-plan.md`](container-build-plan.md) §5.
+
+---
+
+## Fix 11 — container provenance via OCI labels
+
+`.dockerignore` excludes `.git` (it would add roughly a gigabyte to every build
+context). Cabal's `PkgInfo` machinery therefore has no repository to read at
+configure time, and the binary prints its revision as the **empty string**:
+
+```
+chainweb-node-3.2.1 (package chainweb-node-3.2.1 revision )
+```
+
+This is not cosmetic. [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md)
+told operators to *"check the revision string, not just the version"* — advice
+that cannot be followed, and which would have had someone squinting at a blank
+field and concluding the image was fine either way.
+
+**Fix.** The `stoa-node` stage now carries OCI labels fed from build args:
+
+```dockerfile
+ARG STOA_VERSION=dev
+ARG STOA_REVISION=unknown
+LABEL org.opencontainers.image.version="${STOA_VERSION}"
+LABEL org.opencontainers.image.revision="${STOA_REVISION}"
+```
+
+Built with:
+
+```bash
+docker build --target stoa-node -t stoa-node:v3.2.1-stoa.1 \
+  --build-arg STOA_VERSION=v3.2.1-stoa.1 \
+  --build-arg STOA_REVISION="$(git rev-parse HEAD)" .
+```
+
+The release notes' verification section was rewritten around three checks that
+actually work — `/info` → `nodePackageVersion`, `/info` →
+`nodeLatestBehaviorHeight`, and `docker inspect` on the labels.
+
+### `nodeLatestBehaviorHeight` is the useful one
+
+`GET /info` derives `nodeLatestBehaviorHeight` from the fork table **compiled
+into the binary** — the highest fork height plus one. That makes it a direct
+read-out of the consensus rules an image carries, obtainable from a running
+node with one HTTP request and no shell access:
+
+| Image | `nodeLatestBehaviorHeight` |
+|---|---|
+| old `:latest` (2.32.0) | `1` — every Stoa fork sat at genesis |
+| `v3.2.1-stoa.1` | `525001` |
+
+It is also how the fork-transition rehearsal below verified that its patched
+test image had really been built from the patched source.
+
+---
+
+## Fix 12 — `--disable-pow` is inert on `stoa` (no code change; recorded so nobody re-derives it)
+
+Two full test rounds produced **zero blocks** and cost the better part of a day.
+The cause is a genuine asymmetry in how a `ChainwebVersion` gets resolved, and
+it is worth writing down precisely.
+
+`--disable-pow` is applied by `constructVersion`, in the option parser:
+
+```haskell
+-- src/Chainweb/Chainweb/Configuration.hs:618
+& versionCheats . disablePow .~ disablePow'
+```
+
+Note it is an unconditional `.~`, not `%~ (|| …)`: when the flag is absent the
+switch yields `False` and the assignment **overwrites** whatever the version
+module declared. So patching `_disablePow = True` in `Stoa.hs` alone is not
+enough — the config's copy of the version reverts to `False`.
+
+But the *other* consumer never consults the config at all:
+
+```haskell
+-- src/Chainweb/BlockHeader/Internal.hs:404
+instance HasChainwebVersion BlockHeader where
+    _chainwebVersion = lookupVersionByCode . _blockChainwebVersion
+```
+
+and `lookupVersionByCode` short-circuits Stoa before it ever reaches the
+registry:
+
+```haskell
+-- src/Chainweb/Version/Registry.hs:151-157
+lookupVersionByCode code
+    | code == _versionCode mainnet   = mainnet
+    | code == _versionCode testnet04 = testnet04
+    | code == _versionCode stoa      = stoa      -- ours, commit 1b6bd815f
+    | otherwise = lookupVersion & versionCode .~ code
+```
+
+So there are two independent gates, reached by different paths:
+
+| Gate | Resolved from | Effect |
+|---|---|---|
+| `runMiner` → `testMiner` vs `powMiner` (`MinerResources.hs:331`) | **config** version | picks the instant test miner or real CPU PoW |
+| `prop_block_pow` (`Validation.hs:714`), via `extendCut` (`Cut/Create.hs:439`) | **compiled-in** `stoa` | whether a solved header's PoW is checked |
+
+Satisfy only the source patch and you get `powMiner` grinding at production
+difficulty on one core — silence, no error, indistinguishable from a hung node.
+Satisfy only the CLI flag and you get `localTest` emitting unsolved headers that
+`extendCut` rejects:
+
+```
+[Error] … Chainweb.Miner.Miners.localTest failed:
+  InvalidSolvedHeader (BlockHeader {…_blockNonce = Nonce 0…}) "Invalid POW hash"
+```
+
+A test build needs **both**.
+
+### This is a security property, not a bug
+
+Because `lookupVersionByCode` pins `stoa` to the compiled-in value, a production
+Stoa node **cannot be argued out of validating proof of work** by a command-line
+flag, environment variable, or config file — the same protection `mainnet01` and
+`testnet04` already had, extended to Stoa in commit `1b6bd815f`. The worst a
+`--disable-pow` operator achieves is a node that mines headers its own consensus
+layer then throws away.
+
+The same pinning makes `--block-delay` and `--fork-upper-bound` half-applied for
+Stoa: they alter the config's version but not the one block validation resolves.
+Neither is used in production. Left as is, deliberately — narrowing the pin to
+re-enable those knobs would also re-open `--disable-pow`.
