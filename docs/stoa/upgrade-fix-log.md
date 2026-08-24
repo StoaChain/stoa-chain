@@ -516,3 +516,66 @@ The same pinning makes `--block-delay` and `--fork-upper-bound` half-applied for
 Stoa: they alter the config's version but not the one block validation resolves.
 Neither is used in production. Left as is, deliberately — narrowing the pin to
 re-enable those knobs would also re-open `--disable-pow`.
+
+---
+
+## Fix 13 — the image's own HEALTHCHECK could never pass
+
+Found while investigating why the fork-rehearsal container reported `unhealthy`
+with a failing streak of 51 while serving traffic perfectly. Two independent
+faults in the `HEALTHCHECK` inherited from upstream's `chainweb-node` stage:
+
+```dockerfile
+HEALTHCHECK CMD \
+    [ $(ulimit -Sn) -gt 65535 ] \
+    && exec 3<>/dev/tcp/localhost/1848 \
+    && printf "GET /health-check HTTP/1.1\r\n…" >&3 \
+    && grep -q "200 OK" <&3 \
+    || exit 1
+```
+
+1. **`/dev/tcp` is a bash builtin.** `HEALTHCHECK CMD <string>` is executed as
+   `/bin/sh -c`, and `/bin/sh` is dash in this image. dash answers
+   `cannot create /dev/tcp/localhost/1848: Directory nonexistent` (exit 2).
+2. **`ulimit -Sn` reads the wrong process.** A healthcheck exec does not inherit
+   the container init process's rlimits. Under Docker 29.1.3 the exec gets soft
+   nofile **1024** while PID 1 has **524288**, so the gate fails permanently.
+
+Both were confirmed by running each clause separately inside the container.
+
+### Not a regression — but it would have surfaced on redeploy
+
+A **fresh container from the already-published `ghcr.io/stoachain/stoa-node:latest`**
+is also permanently `unhealthy` on this host. The four live slaves report
+`healthy` only because docker-compose replaces the image's healthcheck at
+container-creation time:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/18488 && …'"]
+```
+
+— wrapped in `bash -c`, pointed at the slave's real service port, and with the
+ulimit clause dropped. The override has been masking a broken built-in for as
+long as the image has existed. Anyone running the image without that override
+gets a container that works but never reports healthy.
+
+### Fix
+
+The `stoa-node` stage now overrides `HEALTHCHECK` (upstream's stage is left
+untouched):
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10m --retries=5 CMD \
+    bash -c 'exec 3<>/dev/tcp/localhost/${SERVICE_PORT:-1848} && printf "GET /health-check HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n" >&3 && grep -q "200 OK" <&3'
+```
+
+- runs under `bash`, so `/dev/tcp` resolves;
+- follows `SERVICE_PORT` instead of hard-coding 1848;
+- drops the ulimit gate as **redundant**: `checkRLimits`
+  ([node/src/Utils/CheckRLimits.hs:38](../../node/src/Utils/CheckRLimits.hs))
+  already exits at startup when the hard limit is under 32768 and raises the
+  soft limit to the hard limit otherwise. A startup precondition does not belong
+  in a liveness probe.
+
+Verified by running the exact command inside the container: exit 0.

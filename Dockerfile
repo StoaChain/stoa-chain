@@ -435,5 +435,28 @@ LABEL org.opencontainers.image.revision="${STOA_REVISION}"
 VOLUME ["/data"]
 EXPOSE 1789 1848
 STOPSIGNAL SIGTERM
+
+# Replace the HEALTHCHECK inherited from the `chainweb-node` stage, which can
+# never pass in this image. Verified on 2026-08-24 against a fresh container
+# from the *published* image, which sat `unhealthy` forever, for two reasons:
+#
+#  1. `HEALTHCHECK CMD <string>` is executed as `/bin/sh -c`, and `/bin/sh` is
+#     dash here. `/dev/tcp/...` is a bash builtin, so dash answers
+#     "cannot create /dev/tcp/localhost/1848: Directory nonexistent".
+#  2. Its `[ $(ulimit -Sn) -gt 65535 ]` gate reads the *healthcheck exec's*
+#     rlimits, which do not inherit from the container init process. Under
+#     Docker 29 that exec gets soft nofile 1024 while PID 1 has 524288.
+#
+# The ulimit gate is also redundant: `checkRLimits` in `main`
+# (node/src/Utils/CheckRLimits.hs) already exits at startup when the hard limit
+# is below 32768, and raises the soft limit to the hard limit otherwise. A
+# health check is the wrong place for a startup precondition.
+#
+# Production has been masking this with a docker-compose `healthcheck:`
+# override, so a broken built-in went unnoticed. This makes the image correct
+# on its own, and follows SERVICE_PORT rather than hard-coding 1848.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10m --retries=5 CMD \
+    bash -c 'exec 3<>/dev/tcp/localhost/${SERVICE_PORT:-1848} && printf "GET /health-check HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n" >&3 && grep -q "200 OK" <&3'
+
 ENTRYPOINT ["/chainweb/entrypoint.sh"]
 
