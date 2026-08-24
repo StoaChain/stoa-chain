@@ -216,14 +216,55 @@ Nodes may be rolled one at a time; old and new peer normally below the fork heig
 
 ### Verifying a node
 
+**Do not rely on `chainweb-node --version` for provenance.** `.dockerignore`
+excludes `.git` from the build context, so the revision it embeds at configure
+time is the **empty string** — the binary prints `revision ` with nothing after
+it. Use the three checks below instead.
+
+**1. Package version (from a running node, no exec needed):**
+
 ```bash
-docker exec <container> chainweb-node --version
-# expect: chainweb-node-3.2.1 (package chainweb-node-3.2.1 revision <sha>-upgrade/chainweb-3.2.1)
+curl -s http://<host>:1848/info | jq -r .nodePackageVersion
 ```
 
-Check the **revision string**, not just the version — `--version` embeds the git
-SHA at configure time, and a stale binary will happily report a plausible-looking
-result.
+Expect `3.2.1`. The old image reports `2.32.0`.
+
+**2. Compiled consensus rules — this is the check that matters:**
+
+```bash
+curl -s http://<host>:1848/info | jq -r .nodeLatestBehaviorHeight
+```
+
+Expect **`525001`**. This value is derived from the fork table compiled into the
+binary (highest fork height + 1), so it proves the node carries the 525,000
+activation. The old image reports `1`, because before this release every Stoa
+fork sat at genesis. A node reporting anything other than `525001` will fork
+away from the network at block 525,000 — treat it as not upgraded.
+
+**3. Git provenance, without starting the container:**
+
+```bash
+docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' \
+  ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' \
+  ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+```
+
+These OCI labels are populated from `--build-arg STOA_REVISION` /
+`STOA_VERSION` at build time and are the replacement for the unusable
+`--version` revision string.
+
+### Note on `--disable-pow`
+
+The flag exists but **cannot weaken a Stoa node**, by design.
+`Registry.lookupVersionByCode` short-circuits version code `0x0A` to the
+compiled-in `stoa` value (the same protection `mainnet01` and `testnet04` get),
+so `prop_block_pow` never sees a CLI override. Passing `--disable-pow` only
+swaps the in-node miner for the test miner, whose unsolved headers are then
+rejected with `InvalidSolvedHeader … "Invalid POW hash"`. A test build that
+genuinely needs PoW off must set `_disablePow = True` in
+`src/Chainweb/Version/Stoa.hs` **and** pass the flag; see
+[upgrade-fix-log.md](upgrade-fix-log.md).
 
 ---
 
