@@ -14,6 +14,7 @@ merges never touch these files.
 | [`miner-fork-voting.md`](miner-fork-voting.md) | How miner fork voting actually works, and what it takes to adopt it for StoaChain |
 | [`upgrade-fix-log.md`](upgrade-fix-log.md) | **Running record of every change applied on `upgrade/chainweb-3.2.1`** — one entry per commit, with rationale and revert consequences |
 | [`container-build-plan.md`](container-build-plan.md) | Ordered task list for building and shipping the fixed `v3.2.1-stoa.1` container, including the test gates |
+| [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md) | **Operator-facing release notes** — what ships, the 525,000 activation, how to verify a node is really upgraded, and the full verification record |
 
 ## Status as of 2026-08-03
 
