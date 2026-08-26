@@ -112,7 +112,7 @@ Blocking it requires our own patch to the Pact 5 validation path (a few lines re
 
 ## Chain scan (worth doing regardless)
 
-Upstream scanned mainnet and found no evidence any of SC-1–H-2 were exploited. The equivalent scan on StoaChain is cheap and answers two questions at once — whether we were attacked, and whether option C (genesis activation) is safe:
+Upstream scanned mainnet and found no evidence any of SC-1, SC-2, H-1 or H-2 were exploited. The equivalent scan on StoaChain is cheap and answers two questions at once — whether we were attacked, and whether option C (genesis activation) is safe:
 
 - any transaction whose signer list contains an `addr` field
 - any transaction invoking `compose-capability` across a module boundary
