@@ -1,11 +1,11 @@
 # StoaChain node container — `ghcr.io/stoachain/stoa-node`
 
 `chainweb-node` built for the **stoa** network. This page documents the
-`v3.2.1-stoa.1` image: what it fixes, what changes at block 525,000, and how to
+`v3.2.1-stoa.2` image: what it fixes, what changes at block 517,000, and how to
 verify a running node is really on it.
 
 ```bash
-docker pull ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+docker pull ghcr.io/stoachain/stoa-node:v3.2.1-stoa.2
 ```
 
 | | |
@@ -14,7 +14,7 @@ docker pull ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
 | Compiler | GHC 9.10.2 |
 | chainweb-node | 3.2.1 |
 | Pact | 5.4.1 |
-| Consensus change | **activates at block height 525,000, all chains** |
+| Consensus change | **activates at block height 517,000, all chains** |
 | Upgrade type | binary swap — no resync, no database migration |
 
 ---
@@ -32,13 +32,13 @@ Every one of the eight is closed by this image.
 
 | # | Issue | Severity | How it's closed |
 |---|---|---|---|
-| **#1** | **Identity forgery via the `addr` field.** A WebAuthn signer could set `addr` to any ED25519 public key and be accepted as that key's owner — impersonating any keyset holder on the chain. | CRITICAL | Pact 5.4.1 keys `mkMsgSigs` on the real public key instead of `fromMaybe pubK addr`. Gated at 525,000. |
-| **#2** | **Capability theft through composition.** `compose-capability` did not re-check module boundaries, letting a module acquire capabilities belonging to another module. | CRITICAL | Pact 5.4.1 adds `guardForModuleCall` to `composeCap`. Gated at 525,000. |
-| **#3** | **Unmetered signature size.** Signatures were excluded from transaction size metering, so a transaction could carry near-unbounded signature data at no gas cost. Our exposure was **worse than Kadena mainnet's**, because our block gas limit is ~10x theirs. | HIGH (DoS) | `post32GasModel` meters `sigsSize`. Gated at 525,000. |
-| **#4** | **Block-validation CPU exhaustion.** WebAuthn signature verification is far more expensive than ED25519 but was billed the same, so a cheap block could pin every validator's CPU. Again worse for us than for Kadena. | HIGH (consensus) | `post32GasModel` charges 526 gas per WebAuthn signer vs 21 for ED25519, calibrated to 1 gas per 2.5 µs. Gated at 525,000. |
+| **#1** | **Identity forgery via the `addr` field.** A WebAuthn signer could set `addr` to any ED25519 public key and be accepted as that key's owner — impersonating any keyset holder on the chain. | CRITICAL | Pact 5.4.1 keys `mkMsgSigs` on the real public key instead of `fromMaybe pubK addr`. Gated at 517,000. |
+| **#2** | **Capability theft through composition.** `compose-capability` did not re-check module boundaries, letting a module acquire capabilities belonging to another module. | CRITICAL | Pact 5.4.1 adds `guardForModuleCall` to `composeCap`. Gated at 517,000. |
+| **#3** | **Unmetered signature size.** Signatures were excluded from transaction size metering, so a transaction could carry near-unbounded signature data at no gas cost. Our exposure was **worse than Kadena mainnet's**, because our block gas limit is ~10x theirs. | HIGH (DoS) | `post32GasModel` meters `sigsSize`. Gated at 517,000. |
+| **#4** | **Block-validation CPU exhaustion.** WebAuthn signature verification is far more expensive than ED25519 but was billed the same, so a cheap block could pin every validator's CPU. Again worse for us than for Kadena. | HIGH (consensus) | `post32GasModel` charges 526 gas per WebAuthn signer vs 21 for ED25519, calibrated to 1 gas per 2.5 µs. Gated at 517,000. |
 | **#5** | **CVE-2026-9648** — X.509 `NameConstraints` were not enforced by the pinned `crypton` version. | CRITICAL (CVSS 9.1) | Dependency graph moved to `crypton >= 1.1.2`. **Active immediately.** |
 | **#6** | **Cut-queue duplicate flood.** A remote peer could flood the cut pipeline with duplicates and starve real cut processing. | HIGH (remote DoS) | Deduplication in the cut queue. **Active immediately.** |
-| **#7** | **Unmetered SPV continuation-proof size.** Continuation proofs were not billed for their size. | HIGH | `post32GasModel` adds `proofSizeFactor`. Gated at 525,000. |
+| **#7** | **Unmetered SPV continuation-proof size.** Continuation proofs were not billed for their size. | HIGH | `post32GasModel` adds `proofSizeFactor`. Gated at 517,000. |
 | **#8** | **Completed-defpact continuations accepted into the mempool.** Transactions continuing an already-finished defpact were admitted, then failed at execution — free mempool occupancy. | MEDIUM | Mempool rejects them at admission. **Active immediately.** |
 
 Six further issues (#9–#14) were audited and found **not to affect StoaChain** —
@@ -57,25 +57,35 @@ run. They are documented with the reasoning in
 
 ---
 
-## What happens at block 525,000
+## What happens at block 517,000
 
 Issues #1, #2, #3, #4 and #7 change how transactions execute, so they cannot be
 switched on retroactively without invalidating chain history. They activate
-together at height **525,000 on every chain** — a single fork point, chosen
-2026-08-24 with the tip at ~508,000 (about 5.9 days of margin at our 30 s block
-delay).
+together at height **517,000 on every chain** — a single fork point, set
+2026-08-26 against a live tip of 516,141: 859 blocks, roughly 7 hours at our
+30 s block delay.
+
+> This was brought forward from the 525,000 that `v3.2.1-stoa.1` shipped with,
+> to close issue #2 sooner. **`v3.2.1-stoa.1` is superseded and must not be
+> deployed** — it would wait for a height this network will already have passed
+> under the new rules.
+
+A fork height must always sit *ahead* of the live tip. Setting one in the past
+does not mean "activate immediately": it rewrites the rules for blocks that
+already exist, so replay recomputes their gas, their payload hashes move, and
+the node rejects the chain's own history.
 
 Issues #5, #6 and #8 do not affect execution semantics and are **live the moment
 the container starts**.
 
-> **Every node must be running this image before block 525,000.**
+> **Every node must be running this image before block 517,000.**
 
 ### An un-upgraded node will not warn you
 
 Exactly one guard hangs off the fork, and it is consumed only by transaction
 execution — never by `applyCoinbase`. A post-fork block containing only a
 coinbase is **byte-identical under both rule sets**. So an old node sails past
-525,000 reporting perfect health, and stalls later, at the first post-fork block
+517,000 reporting perfect health, and stalls later, at the first post-fork block
 that carries an actual transaction.
 
 **A healthy node is not evidence of an upgraded node.** Check the version.
@@ -93,17 +103,17 @@ curl -s http://<host>:1848/info | jq '{v:.nodePackageVersion, fork:.nodeLatestBe
 Expected output:
 
 ```json
-{ "v": "3.2.1", "fork": 525001 }
+{ "v": "3.2.1", "fork": 517001 }
 ```
 
 `nodeLatestBehaviorHeight` is the reliable field — it is derived from the
 compiled-in fork table, so it cannot be faked by a config file or a stale image
-tag. Anything other than `525001` will fork off the network at 525,000.
+tag. Anything other than `517001` will fork off the network at 517,000.
 
 To confirm exactly which build you pulled:
 
 ```bash
-docker inspect ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1 --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
+docker inspect ghcr.io/stoachain/stoa-node:v3.2.1-stoa.2 --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
 ```
 
 ---
@@ -114,11 +124,11 @@ The block header format, RocksDB schema and Pact SQLite schema are all
 unchanged. This is a **binary swap**: stop the container, start the new one on
 the same data directory. No resync, no compaction, no migration.
 
-Rollback is clean **until block 525,000 passes**. After that, a rolled-back node
+Rollback is clean **until block 517,000 passes**. After that, a rolled-back node
 is an un-upgraded node and will stall as described above.
 
 ```bash
-docker pull ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+docker pull ghcr.io/stoachain/stoa-node:v3.2.1-stoa.2
 ```
 
 Then recreate the container against your existing volume and environment.
@@ -128,7 +138,7 @@ Then recreate the container against your existing volume and environment.
 ## Running
 
 ```bash
-docker run -d --name stoa-node --restart=unless-stopped -p 1789:1789 -v stoa-data:/data -e P2P_HOSTNAME=your-public-dns-name ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+docker run -d --name stoa-node --restart=unless-stopped -p 1789:1789 -v stoa-data:/data -e P2P_HOSTNAME=your-public-dns-name ghcr.io/stoachain/stoa-node:v3.2.1-stoa.2
 ```
 
 `P2P_HOSTNAME` is required — the node needs to advertise a reachable address to
@@ -152,7 +162,7 @@ The one thing **not** demonstrated empirically: the disclosed exploits being
 because the rehearsal chain has no funded signing key with which to craft an
 adversarial transaction. Recorded here rather than glossed over.
 
-Full record: [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md).
+Full record: [`RELEASE-v3.2.1-stoa.2.md`](RELEASE-v3.2.1-stoa.2.md).
 
 ---
 
@@ -161,7 +171,7 @@ Full record: [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md).
 | Document | Contents |
 |---|---|
 | [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) | All 14 issues, with a verified StoaChain exposure verdict for each |
-| [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md) | Operator release notes and the full verification record |
+| [`RELEASE-v3.2.1-stoa.2.md`](RELEASE-v3.2.1-stoa.2.md) | Operator release notes and the full verification record |
 | [`upgrade-fix-log.md`](upgrade-fix-log.md) | Every change applied, one entry per commit, with revert consequences |
 | [`chainweb-3.2-audit.md`](chainweb-3.2-audit.md) | The underlying audit of chainweb 3.2 / 3.2.1 |
 | [`miner-fork-voting.md`](miner-fork-voting.md) | How upstream's miner fork voting works, and what adopting it would take |

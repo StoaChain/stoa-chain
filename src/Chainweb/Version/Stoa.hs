@@ -49,10 +49,10 @@ stoa = ChainwebVersion
         -- ED25519 keyset holder) and issue #2 (capability theft via
         -- compose-capability across module boundaries).
         --
-        -- ACTIVATION HEIGHT 517,000, brought forward 2026-08-26 from the
+        -- ACTIVATION HEIGHT 516,500, brought forward 2026-08-26 from the
         -- original 525,000 to close issue #2 (capability theft via
-        -- compose-capability) sooner. Chain tip was 516,141 at 20:03 UTC, so
-        -- this is 859 blocks -- about 7 hours at our 30 s block delay. Every
+        -- compose-capability) sooner. Chain tip was 516,149 at 20:25 UTC, so
+        -- this is 351 blocks -- about 3 hours at our 30 s block delay. Every
         -- node must be on v3.2.1-stoa.2 before this height or it will stall.
         --
         -- The height MUST stay ahead of the live tip. A fork height in the
@@ -64,7 +64,7 @@ stoa = ChainwebVersion
         -- Must NOT be at genesis: ForkAtGenesis is minBound, so the guard
         -- would read as always-true and retroactively apply 5.4.1 semantics
         -- to our whole history, breaking replay.
-        Chainweb32 -> AllChains (ForkAtBlockHeight $ BlockHeight 517_000)
+        Chainweb32 -> AllChains (ForkAtBlockHeight $ BlockHeight 516_500)
         _ -> AllChains ForkAtGenesis
     , _versionUpgrades = AllChains mempty
     , _versionGraphs = Bottom (minBound, petersenChainGraph)
@@ -90,7 +90,7 @@ stoa = ChainwebVersion
     -- original formula, and changing it retroactively would recompute gas
     -- for every past transaction, move payload hashes and break replay.
     --
-    -- post32GasModel activates at 517,000, the SAME height as Chainweb32,
+    -- post32GasModel activates at 516,500, the SAME height as Chainweb32,
     -- so one fork turns on every remaining fix at once. It closes issue #3
     -- (unmetered signature size), #4 (unmetered verification CPU) and #7
     -- (unmetered SPV continuation-proof size, via proofSizeFactor).
@@ -99,7 +99,7 @@ stoa = ChainwebVersion
     -- window where Pact runs 5.4.1 semantics while gas is still billed by the
     -- old model, or vice versa -- a second consensus boundary nobody tested.
     , _versionInitialGasModel = AllChains $
-        (ForkAtBlockHeight (BlockHeight 517_000), post32GasModel) `Above`
+        (ForkAtBlockHeight (BlockHeight 516_500), post32GasModel) `Above`
         Bottom (minBound, pre31GasModel)
     , _versionSpvProofRootValidWindow = Bottom (minBound, Nothing)
     , _versionCheats = VersionCheats
