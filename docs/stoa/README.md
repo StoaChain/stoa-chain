@@ -13,20 +13,20 @@ merges never touch these files.
 | [`chainweb-3.2-backport-plan.md`](chainweb-3.2-backport-plan.md) | Wave-by-wave cherry-pick plan with measured (not estimated) conflict status per commit |
 | [`miner-fork-voting.md`](miner-fork-voting.md) | How miner fork voting actually works, and what it takes to adopt it for StoaChain |
 | [`upgrade-fix-log.md`](upgrade-fix-log.md) | **Running record of every change applied on `upgrade/chainweb-3.2.1`** — one entry per commit, with rationale and revert consequences |
-| [`container-build-plan.md`](container-build-plan.md) | Ordered task list for building and shipping the fixed `v3.2.1-stoa.1` container, including the test gates |
-| [`CONTAINER-README.md`](CONTAINER-README.md) | **Package README for `ghcr.io/stoachain/stoa-node`** — what the container fixes, the 525,000 activation, how to verify and upgrade |
-| [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md) | **Operator-facing release notes** — what ships, the 525,000 activation, how to verify a node is really upgraded, and the full verification record |
+| [`container-build-plan.md`](container-build-plan.md) | Ordered task list for building and shipping the fixed container, including the test gates |
+| [`CONTAINER-README.md`](CONTAINER-README.md) | **Package README for `ghcr.io/stoachain/stoa-node`** — what the container fixes, the 516,500 activation, how to verify and upgrade |
+| [`RELEASE-v3.2.1-stoa.1.md`](RELEASE-v3.2.1-stoa.1.md) | ⛔ **Superseded release notes** (kept for the verification record) — what ships, the 516,500 activation, how to verify a node is really upgraded, and the full verification record |
 
-## Status as of 2026-08-24 — `v3.2.1-stoa.1` SHIPPED
+## Status as of 2026-08-26 — `v3.2.1-stoa.2` SHIPPED
 
 The container is published and `:latest` points at it:
 
 ```
-ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1
+ghcr.io/stoachain/stoa-node:v3.2.1-stoa.2
 ghcr.io/stoachain/stoa-node:latest        (same digest)
 ```
 
-**Every node must be on it before block 525,000**, when issues #1, #2, #3, #4
+**Every node must be on it before block 516,500**, when issues #1, #2, #3, #4
 and #7 activate together. Issues #5, #6 and #8 are live as soon as the container
 starts. See [`CONTAINER-README.md`](CONTAINER-README.md) for the operator view.
 
@@ -45,16 +45,16 @@ behind every verdict.
 ### Merge to `main` — deliberately deferred
 
 `main` still holds the pre-upgrade (2.32.0) tree. The merge is **deferred until
-after block 525,000 has passed in production and the fork is confirmed healthy**,
-decided 2026-08-24.
+after block 516,500 has passed in production and the fork is confirmed healthy**,
+decided 2026-08-24, unchanged by the 2026-08-26 hotfix.
 
 The reasoning: leaving `main` untouched keeps a clean, known-good rollback point
 for as long as a rollback is still possible. Rollback stops being possible once
-525,000 passes, which is exactly when the merge becomes safe to do.
+516,500 passes, which is exactly when the merge becomes safe to do.
 
 Two consequences to be aware of in the meantime:
 
-1. Anyone cloning `main` builds a node that will stall at 525,000.
+1. Anyone cloning `main` builds a node that will stall at 516,500.
 2. The GHCR package page renders the README from the **default branch**, so it
    shows the upstream Kadena README rather than [`CONTAINER-README.md`](CONTAINER-README.md).
    The Release page carries the correct documentation.
@@ -74,8 +74,9 @@ considered and **rejected**: everything ships together, fully tested.
 
 | Release | Contents | Status |
 |---|---|---|
-| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **#1, #2, #3, #4, #5, #6, #7, #8** | ✅ **published 2026-08-24** |
-| **`v3.2.1-stoa.2`** | Minimum gas price floor (10,000 ANU at genesis, +1 ANU / 3 h, cap 400,000) | next |
+| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **#1, #2, #3, #4, #5, #6, #7, #8**, activation at 525,000 | ⛔ **superseded, never deployed** |
+| **`v3.2.1-stoa.2`** | Identical tree, activation moved to **516,500** to close #2 sooner | ✅ **published 2026-08-26** |
+| **`v3.2.1-stoa.3`** | Minimum gas price floor (10,000 ANU at genesis, +1 ANU / 3 h, cap 400,000) | next |
 
 The gas floor is deliberately a **separate release**. Its formula already exists in
 `pact/stoa-coin/new-coin.pact` (`UC_MinimumGasPriceANU`) but is currently dead code —
@@ -84,7 +85,7 @@ nothing calls it, and chainweb's only floor is the per-node, mempool-only
 rule checked in `validateParsedChainwebTx`. **No Pact fork is required** — gas price is
 transaction metadata validated by chainweb, not by the Pact interpreter.
 
-### What shipped in `v3.2.1-stoa.1`
+### What shipped in `v3.2.1-stoa.2`
 
 | | Work | Closes |
 |---|---|---|
@@ -94,7 +95,7 @@ transaction metadata validated by chainweb, not by the Pact interpreter.
 | ✅ | Wave 6 — Pact 5.4.1 activation | **#1, #2** |
 | ✅ | `Stoa.hs` — `Chainweb32` set explicitly above the wildcard | — |
 | ✅ | Version strings → `3.2.1` | — |
-| ✅ | Activation height chosen: **525,000, all chains** | — |
+| ✅ | Activation height chosen: **516,500, all chains** | — |
 | ✅ | CRLF fix via `.gitattributes` — also caught a shipping-blocker in `miner_rewards.csv` | — |
 | ✅ | Container provenance via OCI labels | — |
 | ✅ | Image HEALTHCHECK made functional | — |

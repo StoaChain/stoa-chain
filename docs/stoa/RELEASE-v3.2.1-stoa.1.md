@@ -1,3 +1,21 @@
+> # ⛔ SUPERSEDED — DO NOT DEPLOY
+>
+> **`v3.2.1-stoa.1` was never deployed to the fleet and must not be.** It was
+> replaced on 2026-08-26 by **`v3.2.1-stoa.2`**, which moves the activation
+> height from 525,000 down to **516,500** so that issue #2 (capability theft via
+> `compose-capability`) closes hours from now rather than days.
+>
+> Deploying this image after 516,500 would put a node on the *old* execution
+> rules past the fork — it would stall at the first post-fork block carrying a
+> transaction.
+>
+> **Current release: [`CONTAINER-README.md`](CONTAINER-README.md).**
+>
+> Everything below is retained as the verification record: the replay, the fork
+> transition rehearsal and the measured gas figures were all produced from this
+> tree, and `v3.2.1-stoa.2` differs from it by exactly one constant — the
+> activation height, changed in both places it appears.
+
 # StoaChain v3.2.1-stoa.1 — Release Notes
 
 **Base:** chainweb-node **3.2.1** (`kda-community`, `d89bb530`) + Pact **5.4.1** (`72f42760`)
