@@ -8,7 +8,7 @@ merges never touch these files.
 
 | File | What it is |
 |---|---|
-| [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) | **Start here.** Numbered issue list (#1–#14) with a verified StoaChain exposure verdict for each |
+| [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) | **Start here.** Severity-ordered issue list (SC-1 … M-6) with a verified StoaChain exposure verdict for each |
 | [`chainweb-3.2-audit.md`](chainweb-3.2-audit.md) | Full technical audit of chainweb 3.2 / 3.2.1, every headline claim verified against source |
 | [`chainweb-3.2-backport-plan.md`](chainweb-3.2-backport-plan.md) | Wave-by-wave cherry-pick plan with measured (not estimated) conflict status per commit |
 | [`miner-fork-voting.md`](miner-fork-voting.md) | How miner fork voting actually works, and what it takes to adopt it for StoaChain |
@@ -26,17 +26,17 @@ ghcr.io/stoachain/stoa-node:v3.2.1-stoa.2
 ghcr.io/stoachain/stoa-node:latest        (same digest)
 ```
 
-**Every node must be on it before block 516,500**, when issues #1, #2, #3, #4
-and #7 activate together. Issues #5, #6 and #8 are live as soon as the container
+**Every node must be on it before block 516,500**, when issues SC-1, SC-2, H-1, H-2
+and H-4 activate together. Issues C-1, H-3 and M-1 are live as soon as the container
 starts. See [`CONTAINER-README.md`](CONTAINER-README.md) for the operator view.
 
 **StoaChain was exposed to 8 of the 14 catalogued issues**, including two that
 permit outright theft:
 
-- **#1 Identity forgery via the `addr` field** — a WebAuthn signer with a forged `addr` impersonates any ED25519 keyset holder. Complete authentication bypass.
-- **#2 Capability theft via `compose-capability`** — any module can acquire another module's capabilities.
+- **SC-1 Identity forgery via the `addr` field** — a WebAuthn signer with a forged `addr` impersonates any ED25519 keyset holder. Complete authentication bypass.
+- **SC-2 Capability theft via `compose-capability`** — any module can acquire another module's capabilities.
 
-On **#3** and **#4** (unmetered signature size and verification CPU) our exposure was *worse*
+On **H-1** and **H-2** (unmetered signature size and verification CPU) our exposure was *worse*
 than Kadena mainnet's, because our block gas limit is roughly 10× theirs.
 
 See [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) for the evidence
@@ -74,8 +74,8 @@ considered and **rejected**: everything ships together, fully tested.
 
 | Release | Contents | Status |
 |---|---|---|
-| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **#1, #2, #3, #4, #5, #6, #7, #8**, activation at 525,000 | ⛔ **superseded, never deployed** |
-| **`v3.2.1-stoa.2`** | Identical tree, activation moved to **516,500** to close #2 sooner | ✅ **published 2026-08-26** |
+| **`v3.2.1-stoa.1`** | Waves 0–6 — closes issues **SC-1, SC-2, C-1, H-1, H-2, H-3, H-4, M-1**, activation at 525,000 | ⛔ **superseded, never deployed** |
+| **`v3.2.1-stoa.2`** | Identical tree, activation moved to **516,500** to close SC-2 sooner | ✅ **published 2026-08-26** |
 | **`v3.2.1-stoa.3`** | Minimum gas price floor (10,000 ANU at genesis, +1 ANU / 3 h, cap 400,000) | next |
 
 The gas floor is deliberately a **separate release**. Its formula already exists in
@@ -89,10 +89,10 @@ transaction metadata validated by chainweb, not by the Pact interpreter.
 
 | | Work | Closes |
 |---|---|---|
-| ✅ | Waves 0–3 — deps, cut-queue, mempool | #5, #6, #8 |
+| ✅ | Waves 0–3 — deps, cut-queue, mempool | C-1, H-3, M-1 |
 | ✅ | Wave 4 — ForkNumber machinery | enables 5 & 6 |
-| ✅ | Wave 5 — gas model | **#3, #4, #7** |
-| ✅ | Wave 6 — Pact 5.4.1 activation | **#1, #2** |
+| ✅ | Wave 5 — gas model | **H-1, H-2, H-4** |
+| ✅ | Wave 6 — Pact 5.4.1 activation | **SC-1, SC-2** |
 | ✅ | `Stoa.hs` — `Chainweb32` set explicitly above the wildcard | — |
 | ✅ | Version strings → `3.2.1` | — |
 | ✅ | Activation height chosen: **516,500, all chains** | — |

@@ -32,16 +32,16 @@ Every one of the eight is closed by this image.
 
 | # | Issue | Severity | How it's closed |
 |---|---|---|---|
-| **#1** | **Identity forgery via the `addr` field.** A WebAuthn signer could set `addr` to any ED25519 public key and be accepted as that key's owner — impersonating any keyset holder on the chain. | CRITICAL | Pact 5.4.1 keys `mkMsgSigs` on the real public key instead of `fromMaybe pubK addr`. Gated at 516,500. |
-| **#2** | **Capability theft through composition.** `compose-capability` did not re-check module boundaries, letting a module acquire capabilities belonging to another module. | CRITICAL | Pact 5.4.1 adds `guardForModuleCall` to `composeCap`. Gated at 516,500. |
-| **#3** | **Unmetered signature size.** Signatures were excluded from transaction size metering, so a transaction could carry near-unbounded signature data at no gas cost. Our exposure was **worse than Kadena mainnet's**, because our block gas limit is ~10x theirs. | HIGH (DoS) | `post32GasModel` meters `sigsSize`. Gated at 516,500. |
-| **#4** | **Block-validation CPU exhaustion.** WebAuthn signature verification is far more expensive than ED25519 but was billed the same, so a cheap block could pin every validator's CPU. Again worse for us than for Kadena. | HIGH (consensus) | `post32GasModel` charges 526 gas per WebAuthn signer vs 21 for ED25519, calibrated to 1 gas per 2.5 µs. Gated at 516,500. |
-| **#5** | **CVE-2026-9648** — X.509 `NameConstraints` were not enforced by the pinned `crypton` version. | CRITICAL (CVSS 9.1) | Dependency graph moved to `crypton >= 1.1.2`. **Active immediately.** |
-| **#6** | **Cut-queue duplicate flood.** A remote peer could flood the cut pipeline with duplicates and starve real cut processing. | HIGH (remote DoS) | Deduplication in the cut queue. **Active immediately.** |
-| **#7** | **Unmetered SPV continuation-proof size.** Continuation proofs were not billed for their size. | HIGH | `post32GasModel` adds `proofSizeFactor`. Gated at 516,500. |
-| **#8** | **Completed-defpact continuations accepted into the mempool.** Transactions continuing an already-finished defpact were admitted, then failed at execution — free mempool occupancy. | MEDIUM | Mempool rejects them at admission. **Active immediately.** |
+| **SC-1** | **Identity forgery via the `addr` field.** A WebAuthn signer could set `addr` to any ED25519 public key and be accepted as that key's owner — impersonating any keyset holder on the chain. | SUPERCRITICAL | Pact 5.4.1 keys `mkMsgSigs` on the real public key instead of `fromMaybe pubK addr`. Gated at 516,500. |
+| **SC-2** | **Capability theft through composition.** `compose-capability` did not re-check module boundaries, letting a module acquire capabilities belonging to another module. | SUPERCRITICAL | Pact 5.4.1 adds `guardForModuleCall` to `composeCap`. Gated at 516,500. |
+| **C-1** | **CVE-2026-9648** — X.509 `NameConstraints` were not enforced by the pinned `crypton` version, so the holder of a name-constrained sub-CA could mint a certificate valid for any hostname. | CRITICAL (CVSS 9.1) | Dependency graph moved to `crypton >= 1.1.2`. **Active immediately.** |
+| **H-1** | **Unmetered signature size.** Signatures were excluded from transaction size metering, so a transaction could carry near-unbounded signature data at no gas cost. Our exposure was **worse than Kadena mainnet's**, because our block gas limit is ~10x theirs. | HIGH (DoS) | `post32GasModel` meters `sigsSize`. Gated at 516,500. |
+| **H-2** | **Block-validation CPU exhaustion.** WebAuthn signature verification is far more expensive than ED25519 but was billed the same, so a cheap block could pin every validator's CPU. Again worse for us than for Kadena. | HIGH (consensus) | `post32GasModel` charges 526 gas per WebAuthn signer vs 21 for ED25519, calibrated to 1 gas per 2.5 µs. Gated at 516,500. |
+| **H-3** | **Cut-queue duplicate flood.** A remote peer could flood the cut pipeline with duplicates and starve real cut processing. | HIGH (remote DoS) | Deduplication in the cut queue. **Active immediately.** |
+| **H-4** | **Unmetered SPV continuation-proof size.** Continuation proofs were not billed for their size. | HIGH | `post32GasModel` adds `proofSizeFactor`. Gated at 516,500. |
+| **M-1** | **Completed-defpact continuations accepted into the mempool.** Transactions continuing an already-finished defpact were admitted, then failed at execution — free mempool occupancy. | MEDIUM | Mempool rejects them at admission. **Active immediately.** |
 
-Six further issues (#9–#14) were audited and found **not to affect StoaChain** —
+Six further issues (H-5, and M-2 through M-6) were audited and found **not to affect StoaChain** —
 either already fixed in our tree, or reachable only through code paths we don't
 run. They are documented with the reasoning in
 [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md).
@@ -59,14 +59,14 @@ run. They are documented with the reasoning in
 
 ## What happens at block 516,500
 
-Issues #1, #2, #3, #4 and #7 change how transactions execute, so they cannot be
+Issues SC-1, SC-2, H-1, H-2 and H-4 change how transactions execute, so they cannot be
 switched on retroactively without invalidating chain history. They activate
 together at height **516,500 on every chain** — a single fork point, set
 2026-08-26 against a live tip of 516,149: 351 blocks, roughly 3 hours at our
 30 s block delay.
 
 > This was brought forward from the 525,000 that `v3.2.1-stoa.1` shipped with,
-> to close issue #2 sooner. **`v3.2.1-stoa.1` is superseded and must not be
+> to close issue SC-2 sooner. **`v3.2.1-stoa.1` is superseded and must not be
 > deployed** — it would wait for a height this network will already have passed
 > under the new rules.
 
@@ -75,7 +75,7 @@ does not mean "activate immediately": it rewrites the rules for blocks that
 already exist, so replay recomputes their gas, their payload hashes move, and
 the node rejects the chain's own history.
 
-Issues #5, #6 and #8 do not affect execution semantics and are **live the moment
+Issues C-1, H-3 and M-1 do not affect execution semantics and are **live the moment
 the container starts**.
 
 > **Every node must be running this image before block 516,500.**

@@ -133,7 +133,7 @@ Conflicts cluster in exactly two places: (a) `Version.hs`/`Guards.hs` where our 
 
 **Before enabling `post32`:**
 - ~~Re-benchmark WebAuthn.~~ **Withdrawn 2026-08-03.** At the disclosed rate of 1 gas per 2.5 µs both constants are correct: WebAuthn 1,315,000 ns ÷ 2,500 = 526 ✓, ED25519 52 µs ÷ 2.5 µs ≈ 21 ✓. The source comment `-- Benchmarked at 52 ns` is the typo (should be 52 µs). Ship the constants as-is.
-- **This wave closes issues #3 and #4** — unmetered signature *size* and unmetered signature *verification CPU*. Both are live on StoaChain and our exposure is worse than mainnet's, because our block gas limit is ~10× theirs.
+- **This wave closes issues H-1 and H-2** — unmetered signature *size* and unmetered signature *verification CPU*. Both are live on StoaChain and our exposure is worse than mainnet's, because our block gas limit is ~10× theirs.
 - **Recompute our max transaction size.** The `(C/512)^7` penalty reaches our `_versionMaxBlockGasLimit = 2_000_000` at a very different point than mainnet's 180,000.
 - Gate it at a **future block height**, never at genesis — activating retroactively changes gas for historical transactions → payload-hash mismatch → replay failure.
 
@@ -141,11 +141,11 @@ Conflicts cluster in exactly two places: (a) `Version.hs`/`Guards.hs` where our 
 
 ---
 
-## Wave 6 — Pact 5.4.1 · **UNBLOCKED 2026-08-03** · closes issues #1 and #2
+## Wave 6 — Pact 5.4.1 · **UNBLOCKED 2026-08-03** · closes issues SC-1 and SC-2
 
 Source is public. `kda-community/pact-5` tag **`5.4.1`** = `72f427605406df61be8284091922f1fe1af7541b`, verified `version: 5.4.1` and containing both fixes. Chainweb **3.2.1** (`d89bb530`) pins exactly this.
 
-**This wave is the whole point of the exercise** — it closes issue #1 (identity forgery via `addr`, critical auth bypass) and issue #2 (capability theft via `compose-capability`). Both are live on StoaChain today.
+**This wave is the whole point of the exercise** — it closes issue SC-1 (identity forgery via `addr`, critical auth bypass) and issue SC-2 (capability theft via `compose-capability`). Both are live on StoaChain today.
 
 Steps:
 1. Repoint the pact-5 `source-repository-package` to `https://github.com/kda-community/pact-5` tag `72f42760…`. Note upstream ships **no `--sha256`** for `pact`, `pact-5` or `merkle-log`; generate ours with `nix-prefetch-git` if we care about the Nix path.
@@ -218,12 +218,12 @@ Cutover must be **simultaneous** on node1 + node2 (`isAcceptedVersion` requires 
 
 ### Revised priority (2026-08-03)
 
-The transparency report changes the calculus. Waves 4–6 are no longer optional polish — **Wave 6 closes the two critical vulnerabilities (#1 identity forgery, #2 capability theft) that StoaChain is exposed to today**, and Wave 5 closes #3 and #4, where our exposure is worse than mainnet's.
+The transparency report changes the calculus. Waves 4–6 are no longer optional polish — **Wave 6 closes the two critical vulnerabilities (SC-1 identity forgery, SC-2 capability theft) that StoaChain is exposed to today**, and Wave 5 closes H-1 and H-2, where our exposure is worse than mainnet's.
 
 Recommended sequence:
 
-1. **Waves 0–3 first** (~2.5 d) — no fork, no coordination, closes #5 (CVSS 9.1 CVE), #6 (cut-flood DoS) and #8. Ship independently and immediately.
-2. **Waves 4 + 5 + 6 together** (~4–6 d) — one coordinated fork closing #1, #2, #3, #4. They share the ForkNumber plumbing and one activation point, so doing them as a single fork is both less work and less risk than three separate ones.
+1. **Waves 0–3 first** (~2.5 d) — no fork, no coordination, closes C-1 (CVSS 9.1 CVE), H-3 (cut-flood DoS) and M-1. Ship independently and immediately.
+2. **Waves 4 + 5 + 6 together** (~4–6 d) — one coordinated fork closing SC-1, SC-2, H-1, H-2. They share the ForkNumber plumbing and one activation point, so doing them as a single fork is both less work and less risk than three separate ones.
 
 Target **chainweb 3.2.1**, not 3.2 — same code, buildable from source.
 

@@ -358,7 +358,7 @@ Our pin `kadena-io/pact-5@bfc5310c` reports `version: 5.4` — **we are already 
 **Next — the full port.** The migration is genuinely tractable (110 commits, 15 conflicts, clean rollback) and gets us onto a maintained upstream. Phase 1 is now satisfied; the only remaining gate is Phase 5 (replay validation).
 
 **Worth taking:**
-- **The gas model.** Clean, version-parameterized, and it closes issues #3 and #4 (unmetered signature size and verification CPU). Both gas constants are correct as shipped \u2014 no re-benchmarking needed. Note our `_versionMaxBlockGasLimit = 2_000_000` (vs mainnet's 180,000) means the `(C/512)^7` penalty bites at a much larger transaction size — recompute our effective max tx size.
+- **The gas model.** Clean, version-parameterized, and it closes issues H-1 and H-2 (unmetered signature size and verification CPU). Both gas constants are correct as shipped \u2014 no re-benchmarking needed. Note our `_versionMaxBlockGasLimit = 2_000_000` (vs mainnet's 180,000) means the `(C/512)^7` penalty bites at a much larger transaction size — recompute our effective max tx size.
 - **Fork-number voting**, if we ever want more than one validator. Every adversarial finding in §3 is a mainnet-scale multi-miner problem; on a 10-chain network where we run the miners, `_versionForkVoteCastingLength` is just a knob. Set `Chainweb31/32 → ForkNever` for now and adopt later.
 
 **Not worth taking:**
