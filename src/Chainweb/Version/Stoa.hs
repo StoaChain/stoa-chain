@@ -49,15 +49,22 @@ stoa = ChainwebVersion
         -- ED25519 keyset holder) and issue #2 (capability theft via
         -- compose-capability across module boundaries).
         --
-        -- ACTIVATION HEIGHT 525,000, chosen 2026-08-24 with the chain tip at
-        -- ~508,000 per chain: ~17,000 blocks of margin, about 5.9 days at our
-        -- 30 s block delay. Every node must be on v3.2.1-stoa.1 before this
-        -- height or it will stall.
+        -- ACTIVATION HEIGHT 517,000, brought forward 2026-08-26 from the
+        -- original 525,000 to close issue #2 (capability theft via
+        -- compose-capability) sooner. Chain tip was 516,141 at 20:03 UTC, so
+        -- this is 859 blocks -- about 7 hours at our 30 s block delay. Every
+        -- node must be on v3.2.1-stoa.2 before this height or it will stall.
+        --
+        -- The height MUST stay ahead of the live tip. A fork height in the
+        -- past is not "activate immediately" -- it retroactively rewrites the
+        -- rules for blocks that already exist, so replay recomputes their gas,
+        -- their payload hashes move, and the node rejects our own history.
+        -- Same failure as gating at genesis, smaller window.
         --
         -- Must NOT be at genesis: ForkAtGenesis is minBound, so the guard
         -- would read as always-true and retroactively apply 5.4.1 semantics
         -- to our whole history, breaking replay.
-        Chainweb32 -> AllChains (ForkAtBlockHeight $ BlockHeight 525_000)
+        Chainweb32 -> AllChains (ForkAtBlockHeight $ BlockHeight 517_000)
         _ -> AllChains ForkAtGenesis
     , _versionUpgrades = AllChains mempty
     , _versionGraphs = Bottom (minBound, petersenChainGraph)
@@ -83,12 +90,16 @@ stoa = ChainwebVersion
     -- original formula, and changing it retroactively would recompute gas
     -- for every past transaction, move payload hashes and break replay.
     --
-    -- post32GasModel activates at 525,000, the SAME height as Chainweb32,
+    -- post32GasModel activates at 517,000, the SAME height as Chainweb32,
     -- so one fork turns on every remaining fix at once. It closes issue #3
     -- (unmetered signature size), #4 (unmetered verification CPU) and #7
     -- (unmetered SPV continuation-proof size, via proofSizeFactor).
+    --
+    -- These two heights must never diverge. Splitting them would create a
+    -- window where Pact runs 5.4.1 semantics while gas is still billed by the
+    -- old model, or vice versa -- a second consensus boundary nobody tested.
     , _versionInitialGasModel = AllChains $
-        (ForkAtBlockHeight (BlockHeight 525_000), post32GasModel) `Above`
+        (ForkAtBlockHeight (BlockHeight 517_000), post32GasModel) `Above`
         Bottom (minBound, pre31GasModel)
     , _versionSpvProofRootValidWindow = Bottom (minBound, Nothing)
     , _versionCheats = VersionCheats
