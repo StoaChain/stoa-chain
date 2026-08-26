@@ -10,11 +10,11 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 
 | # | Commit | Wave | Closes | Summary |
 |---|---|---|---|---|
-| 1 | `ce33454d3` | 0 | **#5** | Adopt 3.2.1 dependency graph; unblock CVE-2026-9648 |
-| 2 | `4ceb23b78` | 0 | **#5** | Update dependency bounds in the three `.cabal` files |
+| 1 | `ce33454d3` | 0 | **C-1** | Adopt 3.2.1 dependency graph; unblock CVE-2026-9648 |
+| 2 | `4ceb23b78` | 0 | **C-1** | Update dependency bounds in the three `.cabal` files |
 | 3 | `7eaa8f8ea`, `83982b9fb`, `201f42ee5`, `4ffd21cd3` + fixup | 1 | — | Build compatibility for the new dependency graph |
-| 4 | `d9c91ff4c`, `1975d45c6`, `af4ab9fc8` | 2 | **#6** | Cut-queue duplicate-flood DoS fix |
-| 5 | `5025933a4` | 3 | **#8** | Reject completed-defpact continuations at mempool pre-insert |
+| 4 | `d9c91ff4c`, `1975d45c6`, `af4ab9fc8` | 2 | **H-3** | Cut-queue duplicate-flood DoS fix |
+| 5 | `5025933a4` | 3 | **M-1** | Reject completed-defpact continuations at mempool pre-insert |
 | 6 | `cbc5ca363` | - | - | Dockerfile GHC 9.10.1 -> 9.10.2 |
 | 7 | `dddff65c6`, `ccf2baf4d` | - | - | Remove 5 redundant imports; **waves 0-3 compile and link** |
 
@@ -22,7 +22,7 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 
 ## Fix 1 — `ce33454d3` · adopt the 3.2.1 dependency graph
 
-**Closes issue #5** — CVE-2026-9648 ([CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559), CVSS 9.1). `crypton-x509-validation` does not enforce RFC 5280 NameConstraints, so a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname. Fixed upstream in 1.9.1.
+**Closes issue C-1** — CVE-2026-9648 ([CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559), CVSS 9.1). `crypton-x509-validation` does not enforce RFC 5280 NameConstraints, so a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname. Fixed upstream in 1.9.1.
 
 **Why it was blocked on us:** 1.9.1 requires `crypton >= 1.1`, and our own `cabal.project` pinned `crypton == 1.0.4`. Our bootstraps are built with `domainAddr2PeerInfo = fmap (PeerInfo Nothing)` — no pinned certificate fingerprint — so they fall back to `getSystemCertificateStore`, which is the affected path.
 
@@ -33,7 +33,7 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 | Removed constraint block | `crypton == 1.0.4`, `memory == 0.18.0`, `merkle-log == 0.2.0`. These were a workaround for crypton 1.0.5+ migrating `memory` → `ram`; 3.2.1 completes that migration properly, so they are obsolete. |
 | Removed `bytesmith < 0.3.14` | A GHC 9.6 `text-2.0` workaround, no longer needed. |
 | `kadena-io/*` → `kda-community/*` | All source-repository-packages. The kadena-io repos are being archived. |
-| `pact-5` → `StoaChain/pact-5` @ `72f42760` | Tag `5.4.1`. Carries the fixes for issues **#1** and **#2**. |
+| `pact-5` → `StoaChain/pact-5` @ `72f42760` | Tag `5.4.1`. Carries the fixes for issues **SC-1** and **SC-2**. |
 | `pact` → `StoaChain/pact` @ `ef859d8b` | Pact 4.13.2. **Still required** — see note below. |
 | Added `merkle-log` source pin | `kda-community/merkle-log` @ `c502176`. |
 | Dropped `allow-newer` entries | `wai-middleware-validation:*`, `validation:*`. |
@@ -52,7 +52,7 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 
 ## Fix 2 — dependency bounds in the `.cabal` files
 
-**Completes issue #5.** `cabal.project` now *permits* the new dependency graph, but the `.cabal` files still declared the old bounds and still named `memory` and `cryptonite`. Without this the solver cannot pick `crypton-x509-validation 1.9.1`.
+**Completes issue C-1.** `cabal.project` now *permits* the new dependency graph, but the `.cabal` files still declared the old bounds and still named `memory` and `cryptonite`. Without this the solver cannot pick `crypton-x509-validation 1.9.1`.
 
 **Method:** targeted line edits rather than cherry-picking `2dadedf75` / `336aa4c5f` / `9598bdb2a`. Those conflicted because they assume each other's ordering and our `.cabal` files carry Stoa-specific module entries. Editing the bounds directly keeps the change minimal and leaves version strings and Stoa entries untouched.
 
@@ -99,7 +99,7 @@ Four upstream commits, cherry-picked directly (all applied clean), plus one fixu
 
 ## Fix 4 — Wave 2 · cut-queue duplicate-flood DoS
 
-**Closes issue #6.** Before this, `Data/PQueue.hs` was a `Data.Heap` of `Down CutHashes`. Equal cuts compare `EQ` and a heap admits duplicates, so `pQueueInsertLimit` could retain **N copies of a single attacker cut**, evicting every legitimate pending cut — and each copy re-triggers a full prerequisite header/payload fetch.
+**Closes issue H-3.** Before this, `Data/PQueue.hs` was a `Data.Heap` of `Down CutHashes`. Equal cuts compare `EQ` and a heap admits duplicates, so `pQueueInsertLimit` could retain **N copies of a single attacker cut**, evicting every legitimate pending cut — and each copy re-triggers a full prerequisite header/payload fetch.
 
 Remotely reachable by an unauthenticated peer: `cutPutHandler` only checks that the **attacker-supplied** `_cutOrigin` address exists in the local peer DB, not that the requester *is* that peer. Bootstrap addresses are public and hard-coded.
 
@@ -136,11 +136,11 @@ That code arrived in `1286b1813` ("Rewind at startup if not on community fork"),
 
 **Known limitation, still open upstream:** this does **not** close the forged-weight flood. Dedup keys on `_cutHashesId` and priority on `_cutHashesWeight`, both attacker-supplied and unvalidated, so an attacker can still fill the buffer with *distinct* cuts claiming near-maximum weight. Upstream's own comment remains in the tree: *"FIXME: this is problematic. We should drop these much earlier before they are even added to the queue."*
 
-**If reverted:** issue #6 returns — an unauthenticated peer can evict all pending cuts. Note `af4ab9fc8` and the `Priority` sign flip are **coupled**: reverting one without the other inverts the header-fetch order.
+**If reverted:** issue H-3 returns — an unauthenticated peer can evict all pending cuts. Note `af4ab9fc8` and the `Priority` sign flip are **coupled**: reverting one without the other inverts the header-fetch order.
 
 ## Fix 5 — Wave 3 · completed-defpact continuations in the mempool
 
-**Closes issue #8.** Cherry-picked `1aa616ba0` — applied clean, 3 files, +58/−46.
+**Closes issue M-1.** Cherry-picked `1aa616ba0` — applied clean, 3 files, +58/−46.
 
 Pre-insert did not check whether a continuation targets a defpact that has **already completed**. An attacker could therefore fill mempools and blocks with guaranteed-failing cross-chain "finish" replays at minimal cost.
 
@@ -156,7 +156,7 @@ with the new error constructor at `Mempool/Mempool.hs:245`.
 
 **Non-consensus.** This strictly *rejects more* at pre-insert; a node without it validates blocks identically. Safe to ship independently of any fork.
 
-**If reverted:** issue #8 returns — cheap mempool and block-space pollution.
+**If reverted:** issue M-1 returns — cheap mempool and block-space pollution.
 
 ---
 
@@ -180,7 +180,7 @@ docker run --rm -v "$PWD":/src:ro -v ~/cwbuild:/build \
   bash -c 'export PATH=/build/bin:$PATH; cabal build --dry-run chainweb --builddir=/build/dist'
 ```
 
-### Result — issue #5 is genuinely closed
+### Result — issue C-1 is genuinely closed
 
 | Package | Resolved | Requirement |
 |---|---|---|
@@ -191,11 +191,11 @@ docker run --rm -v "$PWD":/src:ro -v ~/cwbuild:/build \
 | `crypton-asn1-encoding` | 0.10.0 | `>= 0.10.0` ✅ |
 | `merkle-log` | 0.2.1 | `>= 0.2.1` ✅ |
 | `ram` | 0.22.1 | `>= 0.2.2` ✅ |
-| `pact-tng` | **5.4.1** | carries fixes for #1, #2 ✅ |
+| `pact-tng` | **5.4.1** | carries fixes for SC-1, SC-2 ✅ |
 | `pact` | 4.13.2 | Pact 4 ✅ |
 | `tls` | 2.4.3 | ✅ |
 
-Fixes 1–2 made the CVE fix *reachable*; this run proves it *resolves*. **Issue #5 verified closed.**
+Fixes 1–2 made the CVE fix *reachable*; this run proves it *resolves*. **Issue C-1 verified closed.**
 
 ### Both StoaChain forks validated
 
@@ -372,22 +372,22 @@ Because the resolver takes "theirs" wholesale, the Stoa wiring was verified afte
 
 StoaChain has always billed with the original formula. Activating `post32GasModel` retroactively would recompute gas for every historical transaction, moving payload hashes and breaking replay — the same trap as `Chainweb32`.
 
-> **Wave 5 installs the machinery; it does NOT close issues #3 and #4.**
+> **Wave 5 installs the machinery; it does NOT close issues H-1 and H-2.**
 > Closing them means adding a rule keyed at a **future block height**, which is a release decision rather than a port step. Documented at the field.
 
 ## Still to do
 
 | Wave | Scope | Consensus? |
 |---|---|---|
-| 0 | ✅ **done** (fixes 1–2) → closes **#5** | no |
+| 0 | ✅ **done** (fixes 1–2) → closes **C-1** | no |
 | 1 | ✅ **done** (fix 3) — build compat | no |
-| 2 | ✅ **done** (fix 4) → closes **#6** | no |
-| 3 | ✅ **done** (fix 5) → closes **#8** | no |
-| — | ✅ **Dependency resolution verified** — `crypton-x509-validation-1.9.1` confirmed, issue **#5** closed | — |
+| 2 | ✅ **done** (fix 4) → closes **H-3** | no |
+| 3 | ✅ **done** (fix 5) → closes **M-1** | no |
+| — | ✅ **Dependency resolution verified** — `crypton-x509-validation-1.9.1` confirmed, issue **C-1** closed | — |
 | — | ⏸ **Full compile** — not yet attempted; first real test that waves 0–3 typecheck together | — |
 | 4 | ForkNumber machinery | **yes** |
-| 5 | Gas model → closes **#3**, **#4** | **yes** |
-| 6 | Pact 5.4.1 activation → closes **#1**, **#2** | **yes** |
+| 5 | Gas model → closes **H-1**, **H-2** | **yes** |
+| 6 | Pact 5.4.1 activation → closes **SC-1**, **SC-2** | **yes** |
 
 Then: version strings (`chainweb.cabal` still reads `2.32.0`, which was hand-edited and never accurate), `Stoa.hs` field updates, GHC 9.10.1 → 9.10.2, and the test gates in [`container-build-plan.md`](container-build-plan.md) §5.
 

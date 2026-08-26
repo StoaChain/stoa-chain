@@ -2,7 +2,7 @@
 >
 > **`v3.2.1-stoa.1` was never deployed to the fleet and must not be.** It was
 > replaced on 2026-08-26 by **`v3.2.1-stoa.2`**, which moves the activation
-> height from 525,000 down to **516,500** so that issue #2 (capability theft via
+> height from 525,000 down to **516,500** so that issue SC-2 (capability theft via
 > `compose-capability`) closes hours from now rather than days.
 >
 > Deploying this image after 516,500 would put a node on the *old* execution
@@ -54,7 +54,7 @@ per-commit record is in [`upgrade-fix-log.md`](upgrade-fix-log.md).
 
 These need no fork. They take effect the moment a node restarts on this image.
 
-### #5 · CVE-2026-9648 — X.509 NameConstraints not enforced · **CVSS 9.1**
+### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced · **CVSS 9.1**
 
 `crypton-x509-validation` did not enforce RFC 5280 NameConstraints, so a holder
 of a name-constrained sub-CA could mint a certificate valid for **any** hostname
@@ -70,7 +70,7 @@ adopting upstream's completed `memory` → `ram` migration.
 
 Not mentioned in any upstream changelog or in the transparency report.
 
-### #6 · Cut-queue duplicate-flood DoS
+### H-3 · Cut-queue duplicate-flood DoS
 
 `Data/PQueue.hs` was a heap of `Down CutHashes`. Equal cuts compare `EQ` and heaps
 admit duplicates, so the queue could fill with N copies of a single attacker cut,
@@ -88,7 +88,7 @@ Fixed by replacing the heap with a keyed STM map that drops duplicates.
 > flood of *distinct* cuts claiming near-maximum weight is still possible.
 > Upstream's own `FIXME` remains in the tree.
 
-### #8 · Completed-defpact continuations accepted into the mempool
+### M-1 · Completed-defpact continuations accepted into the mempool
 
 Pre-insert did not check whether a continuation targeted an already-completed
 defpact, so an attacker could cheaply fill mempools and blocks with
@@ -101,7 +101,7 @@ guaranteed-failing cross-chain replays. Now rejected with
 
 All five share one activation height, so a single fork turns everything on at once.
 
-### #1 · Identity forgery via the signer `addr` field · **CRITICAL**
+### SC-1 · Identity forgery via the signer `addr` field · **CRITICAL**
 
 A `Signer` may carry an optional `_siAddress`. Pre-fix, Pact keyed the
 message-signature map on `fromMaybe pubK addr` — an attacker-controlled field.
@@ -118,7 +118,7 @@ StoaChain was exposed because our fork table puts every fork at genesis, so
 `chainweb221Pact` has been true since block 0 and WebAuthn signers have always
 been accepted.
 
-### #2 · Capability theft via `compose-capability` · **CRITICAL**
+### SC-2 · Capability theft via `compose-capability` · **CRITICAL**
 
 Pact's core security property is that *a capability can only be acquired by code
 within the same module*. `composeCap` called `evalCap` **without**
@@ -126,25 +126,25 @@ within the same module*. `composeCap` called `evalCap` **without**
 belonging to a third-party module. Upstream's assessment: *"most existing
 contracts were potentially vulnerable to this attack."*
 
-### #3 · Unmetered signature size · HIGH
+### H-1 · Unmetered signature size · HIGH
 
 Signatures were capped at 100 per transaction but charged **zero** gas —
 `payloadBytes` excludes `_cmdSigs`. WebAuthn signatures carry arbitrary-size
 embedded metadata, so blocks could be inflated beyond what the P2P layer
 propagates efficiently while staying inside the block gas limit.
 
-### #4 · Block-validation CPU exhaustion · HIGH
+### H-2 · Block-validation CPU exhaustion · HIGH
 
 WebAuthn verification costs ~1.315 ms against ED25519's ~52 µs, and was unmetered.
 Filling a block with WebAuthn-signed transactions pushed validation time toward
 the 30-second block delay — risking an uncontrolled network fork.
 
-> **StoaChain was materially worse off than Kadena on #3 and #4.** Upstream's
+> **StoaChain was materially worse off than Kadena on H-1 and H-2.** Upstream's
 > mitigating argument was that their 150k gas-per-block cap bounded the damage.
 > Our `_versionMaxBlockGasLimit` is **2,000,000** — roughly 10× theirs — so the
 > margin they called *"uncomfortably small"* was about ten times smaller here.
 
-### #7 · Unmetered SPV continuation-proof size · HIGH
+### H-4 · Unmetered SPV continuation-proof size · HIGH
 
 Our code **deliberately subtracted** proof bytes from the billed size
 (`txSize = payloadBytes - contProofSize`), so arbitrarily large SPV proofs could
@@ -373,7 +373,7 @@ paying across the boundary (miner balance on chain 0 reached exactly
 Both deltas match `post32GasModel` exactly: `21` per ED25519 signer plus
 `0.01 × sigsSize` (138 and 276 bytes), with `ceiling` applied to the total. The
 marginal cost of a second signer went from **+1** gas (only the raw payload grew)
-to **+23**. This is the direct evidence that issues **#3**, **#4** and **#7** are
+to **+23**. This is the direct evidence that issues **H-1**, **H-2** and **H-4** are
 closed at the fork and not merely wired up.
 
 **On the 21 test failures.** All golden files are byte-identical to upstream's, yet

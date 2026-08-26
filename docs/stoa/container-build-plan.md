@@ -1,7 +1,7 @@
 # StoaChain container build plan — chainweb 3.2.1 + Pact 5.4.1
 
 Target artefact: `ghcr.io/stoachain/stoa-node:v3.2.1-stoa.1`
-Closes issues **#1, #2, #3, #4, #5, #6, #7, #8** from [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md).
+Closes issues **SC-1, SC-2, C-1, H-1, H-2, H-3, H-4, M-1** from [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md).
 
 ---
 
@@ -35,7 +35,7 @@ Work on a branch off `main`. Never on `main`.
 - [ ] `git remote add kdac https://github.com/kda-community/chainweb-node.git && git fetch kdac --tags`
 - [ ] Follow [`chainweb-3.2-backport-plan.md`](chainweb-3.2-backport-plan.md) waves 0–6, targeting tag **`3.2.1`** (not `3.2`).
 - [ ] Point `cabal.project` at **our** forks of pact-5 / pact / merkle-log, not kda-community's.
-- [ ] Delete our `crypton == 1.0.4` / `memory == 0.18.0` / `merkle-log == 0.2.0` constraint block and the `bytesmith < 0.3.14` pin — they block the CVE fix (#5).
+- [ ] Delete our `crypton == 1.0.4` / `memory == 0.18.0` / `merkle-log == 0.2.0` constraint block and the `bytesmith < 0.3.14` pin — they block the CVE fix (C-1).
 - [ ] Fix `chainweb.cabal` `version:` — currently reads `2.32.0`, which was hand-edited and never accurate. Set to `3.2.1`.
 - [ ] `Stoa.hs` edits: add `_versionForkVoteCastingLength`, rename `_versionMinimumBlockHeaderHistory` → `_versionSpvProofRootValidWindow` (value stays `Nothing`), add `_versionInitialGasModel`, set `Chainweb31` / `Chainweb32` / `MigratePlatformShare` **explicitly** — never via the wildcard.
 
@@ -57,7 +57,7 @@ Option C is viable for a young private chain and would activate the fixes immedi
 
 ### 3a. Note on "just disable WebAuthn" as a shortcut
 
-Issues #1, #3 and #4 all require WebAuthn signatures, so blocking that scheme would mitigate all three at once. **But it is not the one-line change it appears to be.**
+Issues SC-1, H-1 and H-2 all require WebAuthn signatures, so blocking that scheme would mitigate all three at once. **But it is not the one-line change it appears to be.**
 
 `validPPKSchemes` is enforced **only on the Pact 4 code path** — all four call sites go through `Pact4.assertCommand` (`Pact/PactService.hs:820`, `Pact/RestAPI/Server.hs:721`, `Pact4/Validations.hs:92`, `Pact/PactService/Pact4/ExecBlock.hs:339`). Verified: `grep -rn "validPPKSchemes" src/Chainweb/Pact5/ src/Chainweb/Pact/PactService/Pact5/` returns **nothing**.
 
@@ -96,8 +96,8 @@ Blocking it requires our own patch to the Pact 5 validation path (a few lines re
 - [ ] Negative test: point an **old** binary at the post-activation chain and confirm it stalls rather than forking silently.
 
 ### 5d. Exploit regression tests
-- [ ] Reproduce issue #2 using upstream's `compose-caps-bug.repl` against our build — must fail post-activation, succeed pre-activation.
-- [ ] Construct a transaction with a WebAuthn signer carrying a forged `addr` (issue #1) and confirm it no longer satisfies the impersonated keyset post-activation.
+- [ ] Reproduce issue SC-2 using upstream's `compose-caps-bug.repl` against our build — must fail post-activation, succeed pre-activation.
+- [ ] Construct a transaction with a WebAuthn signer carrying a forged `addr` (issue SC-1) and confirm it no longer satisfies the impersonated keyset post-activation.
 
 ## 6. Deployment
 
@@ -112,7 +112,7 @@ Blocking it requires our own patch to the Pact 5 validation path (a few lines re
 
 ## Chain scan (worth doing regardless)
 
-Upstream scanned mainnet and found no evidence any of #1–#4 were exploited. The equivalent scan on StoaChain is cheap and answers two questions at once — whether we were attacked, and whether option C (genesis activation) is safe:
+Upstream scanned mainnet and found no evidence any of SC-1–H-2 were exploited. The equivalent scan on StoaChain is cheap and answers two questions at once — whether we were attacked, and whether option C (genesis activation) is safe:
 
 - any transaction whose signer list contains an `addr` field
 - any transaction invoking `compose-capability` across a module boundary
