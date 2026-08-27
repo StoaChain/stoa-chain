@@ -85,7 +85,7 @@ Not mentioned in any upstream changelog or in the transparency report. We found 
 
 **Fix:** `post32GasModel` charges signature bytes at the normal 0.01/byte via `_signatureSizeFactor = 1.0`.
 
-**Our exposure — and why it is worse for us:** upstream's mitigating argument is that the **150k gas-per-block cap** bounded block size. Our `_versionMaxBlockGasLimit = 2_000_000`, and our nodes run `--block-gas-limit 2000000` — roughly **13x their cap**. (The source default `_configBlockGasLimit = 1_600_000` would be 10.7x, but that is not what we run.) The margin they described as *"uncomfortably small"* is some thirteen times smaller on StoaChain.
+**Our exposure — and why it is worse for us:** upstream's mitigating argument is that the **150k gas-per-block cap** bounded block size. Our `_versionMaxBlockGasLimit = 2_000_000` with default `_configBlockGasLimit = 1_600_000` — roughly **10x their cap**. The margin they described as *"uncomfortably small"* is about ten times smaller on StoaChain.
 
 **Adopted:** yes — `460852eb1`. **Active at block 516,500.**
 
