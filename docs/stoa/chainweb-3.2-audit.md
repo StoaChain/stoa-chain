@@ -26,7 +26,7 @@
 | New gas model charges every signature by size/complexity | **TRUE**, clean implementation |
 | "small increase of almost 40 gas" for ED25519 | **OVERSTATED ~1.8×** — actual is +22.38; their own tests assert +22 |
 | "Prepares for post-quantum signatures" | **ABSENT** — zero PQ code. A pricing hook only, and a `-Werror`-breaking one |
-| "Many bugs and security fixes" | **TRUE** — includes a real CVSS 9.1 CVE fix, undisclosed as such |
+| "Many bugs and security fixes" | **TRUE** — includes a real, unlisted CVE fix, undisclosed as such |
 | "Closes all already identified and never addressed issues" | **FALSE** — several acknowledged FIXMEs remain open in 3.2 |
 
 **Overall:** a substantive release with real security value, oversold in the marketing. As of **3.2.1 (2026-08-03)** it is fully buildable from source and the four fixed vulnerabilities are disclosed — see [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) for the per-issue breakdown and StoaChain exposure verdicts.
@@ -189,7 +189,7 @@ post32       1.0   1.0   1.0      21.0      526.0        new
 
 ### CRITICAL — CVE-2026-9648 (undisclosed as such)
 
-`crypton-x509-validation` does not enforce RFC 5280 NameConstraints → a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname. CVSS 9.1, [CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559). Fixed in **1.9.1**.
+`crypton-x509-validation` does not enforce RFC 5280 NameConstraints → a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname. [CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559). Fixed in **1.9.1**.
 
 3.2 picks it up via the freeze bump (`crypton-x509{,-validation} 1.6.14/1.7.7 → 1.9.1`, `tls 2.1.11 → 2.4.3`). Their CHANGELOG files it only as "Upgrade several upstream libraries" — **no CVE mention anywhere in the release**.
 

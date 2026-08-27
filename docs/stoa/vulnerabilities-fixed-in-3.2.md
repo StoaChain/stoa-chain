@@ -19,7 +19,7 @@ bad it is, and sorting by ID sorts by severity:
 
 `SUPERCRITICAL` sits above the standard scale, which stops at CRITICAL. The
 distinction is real and worth keeping: `SC-1` and `SC-2` let **any** user drain
-**any** account, while `C-1` — a CVSS 9.1 CVE — requires the attacker to already
+**any** account, while `C-1` — a CVE requiring the attacker to already
 hold a name-constrained subordinate CA. Same word, very different bar.
 
 Legend — **EXPOSED** = present and reachable on StoaChain today · **NOT EXPOSED** = verified inapplicable · **N/A** = fixes a mechanism we don't have.
@@ -65,7 +65,7 @@ no upstream changelog and not in the transparency report.
 
 ## CRITICAL
 
-### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced — CVSS 9.1 — StoaChain **EXPOSED** — *found by us*
+### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced — StoaChain **EXPOSED** — *found by us*
 
 `crypton-x509-validation` ignores RFC 5280 NameConstraints, so a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname ([CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559)). Fixed in **1.9.1**.
 

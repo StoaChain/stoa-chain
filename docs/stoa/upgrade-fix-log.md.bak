@@ -22,7 +22,7 @@ Purpose: so that six months from now we can answer "what did we change, why, and
 
 ## Fix 1 — `ce33454d3` · adopt the 3.2.1 dependency graph
 
-**Closes issue C-1** — CVE-2026-9648 ([CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559)). `crypton-x509-validation` does not enforce RFC 5280 NameConstraints, so a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname. Fixed upstream in 1.9.1.
+**Closes issue C-1** — CVE-2026-9648 ([CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559), CVSS 9.1). `crypton-x509-validation` does not enforce RFC 5280 NameConstraints, so a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname. Fixed upstream in 1.9.1.
 
 **Why it was blocked on us:** 1.9.1 requires `crypton >= 1.1`, and our own `cabal.project` pinned `crypton == 1.0.4`. Our bootstraps are built with `domainAddr2PeerInfo = fmap (PeerInfo Nothing)` — no pinned certificate fingerprint — so they fall back to `getSystemCertificateStore`, which is the affected path.
 
