@@ -94,7 +94,7 @@ Not mentioned in any upstream changelog or in the transparency report. We found 
 
 **What:** Signatures were capped at 100/tx but charged **zero** gas — `payloadBytes` excludes `_cmdSigs`. WebAuthn signatures embed arbitrary-size metadata, so blocks could be inflated far beyond what the P2P layer propagates efficiently while staying inside the block gas limit.
 
-**Fix:** `post32GasModel` charges signature bytes at the normal 0.01/byte via `_signatureSizeFactor = 1.0`.
+**Fix:** `post32GasModel` charges signature bytes at the normal 1-gas-per-100-bytes rate via `_signatureSizeFactor = 1.0`.
 
 **Our exposure — and why it is worse for us:** upstream's mitigating argument is that the **150k gas-per-block cap** bounded block size. Our `_versionMaxBlockGasLimit = 2_000_000`, and our nodes run `--block-gas-limit 2000000` — roughly **13x their cap**. (The source default `_configBlockGasLimit = 1_600_000` would be 10.7x, but that is not what we run.) The margin they described as *"uncomfortably small"* is some thirteen times smaller on StoaChain.
 

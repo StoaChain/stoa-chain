@@ -157,9 +157,9 @@ Merkle-verification cost on every node, forever.
 
 | | pre31 (all history) | post32 (from 525,000) |
 |---|---|---|
-| payload bytes | 0.01/byte | 0.01/byte |
-| SPV proof bytes | **free** | 0.01/byte |
-| signature bytes | **free** | 0.01/byte |
+| payload bytes | 1 gas per 100 bytes | 1 gas per 100 bytes |
+| SPV proof bytes | **free** | 1 gas per 100 bytes |
+| signature bytes | **free** | 1 gas per 100 bytes |
 | per ED25519 signer | **free** | **21 gas** |
 | per WebAuthn signer | **free** | **526 gas** |
 
