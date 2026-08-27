@@ -24,10 +24,21 @@ hold a name-constrained subordinate CA. Same word, very different bar.
 
 Legend — **EXPOSED** = present and reachable on StoaChain today · **NOT EXPOSED** = verified inapplicable · **N/A** = fixes a mechanism we don't have.
 
-**Who found what:** `SC-1`, `SC-2`, `H-1` and `H-2` were disclosed by Kadena in the
-transparency report. The other ten came out of our own commit-by-commit read of
-the 3.2 diff — including `C-1`, the most severe item on the list, which appears in
-no upstream changelog and not in the transparency report.
+**Who found what — be precise, this is easy to overstate.** Every one of the
+thirteen bugs below has an upstream Kadena commit fixing it. They found them.
+The split is about what they *said*, not who found them:
+
+| | Findings | |
+|---|---|---|
+| Kadena **disclosed** | `SC-1`, `SC-2`, `H-1`, `H-2` | explained in the transparency report |
+| Kadena **fixed silently** | `H-3`, `H-4`, `H-5`, `M-1` … `M-6` | in the commits, no explanation |
+| **flagged by nobody** | `C-1` | a public CVE, patched upstream by a dependency bump that said nothing |
+
+Our contribution is the ten undocumented ones: reading each commit, working out
+what problem it solved, and deciding whether it reached our chain. **We decoded
+them; we did not discover them.** The verdicts in this document are the product
+of that assessment, and the assessment is the valuable part — but it is not
+discovery and should never be written as though it were.
 
 ---
 
@@ -65,7 +76,7 @@ no upstream changelog and not in the transparency report.
 
 ## CRITICAL
 
-### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced — StoaChain **EXPOSED** — *found by us*
+### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced — StoaChain **EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 `crypton-x509-validation` ignores RFC 5280 NameConstraints, so a holder of a name-constrained sub-CA can mint a certificate valid for **any** hostname ([CERT/CC VU#862559](https://kb.cert.org/vuls/id/862559)). Fixed in **1.9.1**.
 
@@ -111,7 +122,7 @@ At our hard cap that is 3,802 WebAuthn signatures (2,000,000 ÷ 526) or 95,238 E
 
 **Adopted:** yes — `460852eb1`. WebAuthn was **kept enabled**, deliberately, to preserve passkey / seed-phrase-free onboarding as a future option. Note also that the scheme allowlist `validPPKSchemes` is wired only into Pact 4 paths — it appears **zero times** under `src/Chainweb/Pact5/` — so it could not have gated the execution path we actually run. **Active at block 516,500.**
 
-### H-3 · Cut-queue duplicate flood — remote DoS — StoaChain **EXPOSED** — *found by us*
+### H-3 · Cut-queue duplicate flood — remote DoS — StoaChain **EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 `Data/PQueue.hs` was a heap of `Down CutHashes`; equal cuts compare `EQ` and a heap admits duplicates, so `pQueueInsertLimit` could retain *N copies of one attacker cut*, evicting every legitimate pending cut. Each copy re-triggers a full prerequisite header/payload fetch.
 
@@ -121,13 +132,13 @@ Remotely reachable: `cutPutHandler` only checks that the **attacker-supplied** `
 
 **Adopted:** yes — `84e4eb6cb`, then `5fd969c6c`, then `392c5b88d`, **in that order**; the last conflicts if applied alone. **Active immediately.**
 
-### H-4 · Unmetered SPV continuation-proof size — StoaChain **EXPOSED** — *found by us*
+### H-4 · Unmetered SPV continuation-proof size — StoaChain **EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 Our code **deliberately subtracts** proof bytes from the billed size: `txSize = payloadBytes - contProofSize`. Arbitrarily large SPV proofs can be written into blocks at zero marginal gas — bandwidth, permanent storage, and Merkle-verification CPU on every node, forever. Fixed in 3.1 (`c13c0a1a1`), generalised to `_proofSizeFactor` in 3.2. Same class as H-1.
 
 **Adopted:** yes — `c13c0a1a1` and `460852eb1`. **Active at block 516,500.**
 
-### H-5 · Service-date kill switch — availability — StoaChain **NOT EXPOSED** — *found by us*
+### H-5 · Service-date kill switch — availability — StoaChain **NOT EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 2.32 mainnet carried `_versionServiceDate = Just "2026-01-07T00:00:00Z"`; `withServiceDate` throws and terminates the process. It is a deliberate dead-man's switch to force operators to upgrade.
 
@@ -139,37 +150,37 @@ It fires **only** when `_versionCode` equals mainnet's or testnet04's. Ours is `
 
 ## MEDIUM
 
-### M-1 · Completed-defpact continuations accepted into the mempool — StoaChain **EXPOSED** — *found by us*
+### M-1 · Completed-defpact continuations accepted into the mempool — StoaChain **EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 Pre-insert did not check whether a continuation targets an already-completed defpact, so an attacker can cheaply fill mempools and blocks with guaranteed-failing cross-chain replays. Fixed in `1aa616ba0` (`InsertErrorDefPactComplete`). Mempool-only; a node without it validates blocks identically.
 
 **Adopted:** yes — `1aa616ba0`. **Active immediately**, and needs no coordination at all.
 
-### M-2 · Pact-4 module-cache replay divergence — StoaChain **NOT EXPOSED** — *found by us*
+### M-2 · Pact-4 module-cache replay divergence — StoaChain **NOT EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 `_quirkGasFees` grew from 2 to 14 mainnet entries. Missing entries make a from-genesis replay recompute different gas, producing a different payload hash and failing replay. **Mainnet history only; StoaChain has its own genesis and its own (empty) quirk table.**
 
 **Adopted: no — declined.** `f3e097988` imports fourteen assertions about a chain history that is not ours.
 
-### M-3 · Compaction header off-by-one — StoaChain **ALREADY FIXED** — *found by us*
+### M-3 · Compaction header off-by-one — StoaChain **ALREADY FIXED** — *Kadena fixed silently; decoded by us from the diff*
 
 `2f11bda25` changed `runBack` from `latestHeader` to `minBlockHeight`. Our `Compaction.hs:786` already reads `int minBlockHeight` — the fix arrived with our post-3.0 base. No action.
 
 > An earlier revision of this document listed this as needing a backport. It did not. Checked, found already present, corrected.
 
-### M-4 · Cut-queue buffer size of zero — liveness — StoaChain **NOT EXPOSED** — *found by us*
+### M-4 · Cut-queue buffer size of zero — liveness — StoaChain **NOT EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 `_cutDbParamsBufferSize = order^2 * diameter` evaluates to **0** on a diameter-0 (singleton) graph, truncating the queue on every insert. We use `petersenChainGraph` (10 chains, diameter 2), giving 800.
 
 **Adopted: yes, despite not needing it** — `5fd969c6c` is a prerequisite for H-3, which conflicts without it.
 
-### M-5 · Fork-vote off-by-one and unknown-fork-number acceptance — **N/A** — *found by us*
+### M-5 · Fork-vote off-by-one and unknown-fork-number acceptance — **N/A** — *Kadena fixed silently; decoded by us from the diff*
 
 `5167be993` and `58681f677` fix bugs in the fork-voting machinery. Only relevant once we adopt voting — see [`miner-fork-voting.md`](miner-fork-voting.md).
 
 **Adopted: yes, but dormant.** Both came in with the ForkNumber machinery that H-1/H-2/H-4 depend on. `_versionForkNumber = 0`, and the vote epoch is `120 × 119` casting blocks + 120 counting = 14,400, exactly five days at our block delay. The apparatus is in the binary; we do not use it.
 
-### M-6 · Node-version header unparseable — StoaChain **NOT EXPOSED** — *found by us*
+### M-6 · Node-version header unparseable — StoaChain **NOT EXPOSED** — *Kadena fixed silently; decoded by us from the diff*
 
 `"2.32-community"` failed `NodeVersion`'s dotted-integer parser, so `guardPeerDb` rejected every community peer. Ours is the bare `CURRENT_PACKAGE_VERSION`.
 
