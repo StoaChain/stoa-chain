@@ -42,7 +42,7 @@ Kadena's community fork disclosed four vulnerabilities in their
 [Ad-Vitam Transparency Report](https://medium.com/@communitykadena/chainweb-3-2-ad-vitam-transparency-report-cfcfff237f43)
 (2026-08-02). An audit of the 3.2 release against our tree found **eight** issues
 that StoaChain was exposed to — the four disclosed, plus four more found in the
-diff, including an undisclosed CVSS 9.1 CVE.
+diff, including an undisclosed CVE.
 
 This release closes all eight. Full analysis in
 [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md); the
@@ -54,7 +54,7 @@ per-commit record is in [`upgrade-fix-log.md`](upgrade-fix-log.md).
 
 These need no fork. They take effect the moment a node restarts on this image.
 
-### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced · **CVSS 9.1**
+### C-1 · CVE-2026-9648 — X.509 NameConstraints not enforced
 
 `crypton-x509-validation` did not enforce RFC 5280 NameConstraints, so a holder
 of a name-constrained sub-CA could mint a certificate valid for **any** hostname
