@@ -37,7 +37,7 @@ permit outright theft:
 - **SC-2 Capability theft via `compose-capability`** — any module can acquire another module's capabilities.
 
 On **H-1** and **H-2** (unmetered signature size and verification CPU) our exposure was *worse*
-than Kadena mainnet's, because our block gas limit is roughly 10× theirs.
+than Kadena mainnet's, because our block gas limit is roughly 13× theirs (2,000,000 vs 150,000).
 
 See [`vulnerabilities-fixed-in-3.2.md`](vulnerabilities-fixed-in-3.2.md) for the evidence
 behind every verdict.

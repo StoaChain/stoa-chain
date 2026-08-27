@@ -95,7 +95,7 @@ Not mentioned in any upstream changelog or in the transparency report. We found 
 
 **Fix:** flat per-scheme verification charge at Pact's CPU price of **1 gas per 2.5 microseconds**: `ED25519 -> 21.0` (52 µs), `WebAuthn -> 526.0` (1.315 ms).
 
-**Our exposure:** same 30 s block delay, same WebAuthn availability, ~10x the gas budget per block. Strictly worse margin than mainnet.
+**Our exposure:** same 30 s block delay, same WebAuthn availability, ~13x the gas budget per block. Strictly worse margin than mainnet.
 
 **What the fix means for our 2,000,000 block gas cap.** Because the charge is denominated in time, the block gas limit becomes a **CPU-time budget**: worst-case verification work is `gasLimit × 2.5 µs` regardless of signature mix.
 
@@ -185,6 +185,6 @@ Pre-insert did not check whether a continuation targets an already-completed def
 | Exposed — should fix | 1 | M-1 |
 | Not exposed / already fixed / N/A | 6 | H-5, M-2, M-3, M-4, M-5, M-6 |
 
-**Two findings are SUPERCRITICAL and permit outright theft (SC-1, SC-2); one more is CRITICAL (C-1).** On H-1 and H-2 our exposure is materially worse than Kadena mainnet's, because our block gas limit is roughly 10x theirs.
+**Two findings are SUPERCRITICAL and permit outright theft (SC-1, SC-2); one more is CRITICAL (C-1).** On H-1 and H-2 our exposure is materially worse than Kadena mainnet's, because our block gas limit is roughly 13x theirs.
 
 Upstream state that their chain scan found **no evidence any of the four disclosed issues were exploited**. We have not performed the equivalent scan on StoaChain; it is cheap and worth doing.
