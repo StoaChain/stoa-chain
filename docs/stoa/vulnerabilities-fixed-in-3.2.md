@@ -198,4 +198,6 @@ Pre-insert did not check whether a continuation targets an already-completed def
 
 **Two findings are SUPERCRITICAL and permit outright theft (SC-1, SC-2); one more is CRITICAL (C-1).** On H-1 and H-2 our exposure is materially worse than Kadena mainnet's, because our block gas limit is roughly 13x theirs.
 
-Upstream state that their chain scan found **no evidence any of the four disclosed issues were exploited**. We have not performed the equivalent scan on StoaChain; it is cheap and worth doing.
+Upstream state that their chain scan found **no evidence any of the four disclosed issues were exploited**.
+
+**We ran the equivalent scan on StoaChain on 2026-08-27: 5,167,220 blocks across all ten chains, 4,258 transactions, ZERO WebAuthn signers.** Twenty signers carried the optional `addr` field; all were ED25519 with `addr == pubKey`, which is what the ED25519 branch of `verifyUserSig` enforces anyway. SC-1 requires a WebAuthn signature, so the zero closes it conclusively: the vulnerability was reachable from block zero until 516,500 and was never used.
