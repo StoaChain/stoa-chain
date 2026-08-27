@@ -133,7 +133,7 @@ Conflicts cluster in exactly two places: (a) `Version.hs`/`Guards.hs` where our 
 
 **Before enabling `post32`:**
 - ~~Re-benchmark WebAuthn.~~ **Withdrawn 2026-08-03.** At the disclosed rate of 1 gas per 2.5 µs both constants are correct: WebAuthn 1,315,000 ns ÷ 2,500 = 526 ✓, ED25519 52 µs ÷ 2.5 µs ≈ 21 ✓. The source comment `-- Benchmarked at 52 ns` is the typo (should be 52 µs). Ship the constants as-is.
-- **This wave closes issues H-1 and H-2** — unmetered signature *size* and unmetered signature *verification CPU*. Both are live on StoaChain and our exposure is worse than mainnet's, because our block gas limit is ~10× theirs.
+- **This wave closes issues H-1 and H-2** — unmetered signature *size* and unmetered signature *verification CPU*. Both are live on StoaChain and our exposure is worse than mainnet's, because our block gas limit is ~13× theirs.
 - **Recompute our max transaction size.** The `(C/512)^7` penalty reaches our `_versionMaxBlockGasLimit = 2_000_000` at a very different point than mainnet's 180,000.
 - Gate it at a **future block height**, never at genesis — activating retroactively changes gas for historical transactions → payload-hash mismatch → replay failure.
 

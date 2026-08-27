@@ -141,8 +141,8 @@ the 30-second block delay — risking an uncontrolled network fork.
 
 > **StoaChain was materially worse off than Kadena on H-1 and H-2.** Upstream's
 > mitigating argument was that their 150k gas-per-block cap bounded the damage.
-> Our `_versionMaxBlockGasLimit` is **2,000,000** — roughly 10× theirs — so the
-> margin they called *"uncomfortably small"* was about ten times smaller here.
+> Our `_versionMaxBlockGasLimit` is **2,000,000** — roughly 13× theirs — so the
+> margin they called *"uncomfortably small"* was some thirteen times smaller here.
 
 ### H-4 · Unmetered SPV continuation-proof size · HIGH
 
