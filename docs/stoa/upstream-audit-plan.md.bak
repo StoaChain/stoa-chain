@@ -452,29 +452,16 @@ operators actually run, and it is what a finding must be reproducible against.
 `master` is 4 commits ahead and only matters for checking whether something is
 already fixed there before reporting it.
 
-**Clean pinned clones — audit THESE, on AncientIntel:**
+Local checkouts already on disk:
+- chainweb: `Z:\StoaChain\_infra\stoa-chain` (our fork — use `git show <sha>:path`
+  for upstream files, do **not** read our modified working tree by mistake)
+- pact-5: on AncientIntel at
+  `/home/ancientbox/cwbuild/basedist/src/pact-5-69cfe10fdbb4e6fdb904719fa6f8fc848d056186300b445317cec8701f87b298`
 
-```
-/home/ancientbox/audit/chainweb-node   @ d89bb5307  (tag 3.2.1)
-/home/ancientbox/audit/pact-5          @ 72f42760   (= the 5.4.1 pin)
-```
-
-Both are pristine checkouts at the pinned SHAs, verified `dirty: 0`, 69 MB
-total. Cloned 2026-09-01 from `kda-community`.
-
-> ⚠️ **Do not audit `Z:StoaChain_infrastoa-chain`.** That is our fork and it
-> is *modified* — it carries the stoa.2 changes. Reading `Stoa.hs` or our gas
-> model from there and reporting it as upstream would be a false finding. Use
-> the clean clones above.
-
-Work on AncientIntel rather than over the Z: mount: grep across 133k lines
-returns in about a second there and takes minutes through the mount, and HLint
-runs in Docker beside the source.
-
-**Fixture check at these commits (verified 2026-09-01):** `assertSigSize` 9
-hits, `_inmemTxMinGasPrice` 3 hits, irrefutable `Just x <-` 9, `error "` 67,
-and `guardForModuleCall` 8 in pact. The first two are the L1 sweep's test
-fixture.
+> ⚠️ **Trap.** Our tree is *modified* — it carries the stoa.2 changes. Reading
+> `src/Chainweb/Version/Stoa.hs` or our gas model and reporting it as upstream
+> would be a false finding. Always read upstream files via
+> `git show <upstream-sha>:<path>`, never from the working tree.
 
 ---
 
