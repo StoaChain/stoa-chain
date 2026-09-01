@@ -369,3 +369,67 @@ published three of our own errors and that is why the rest was believed.
    unannounced with findings reads worse than announcing intent, and costs
    nothing.
 3. **Where does the report live?** Recommended: private repo until cleared.
+
+---
+
+## 11. Mechanical pre-pass — do this before dispatching any agent
+
+**Do not send an agent to grep 133k lines.** Grep produces the candidate list;
+agents adjudicate each entry. This is cheaper, and complete in a way an agent
+sweep is not — grep does not run out of context or lose interest at file 180.
+
+### Measured surface (chainweb `src/`, 2026-09-01)
+
+| pattern | sites | lens |
+|---|---|---|
+| `error "` | 67 | L2 — each is a claimed impossibility |
+| `fromJust` | 44 | L3 |
+| `fromMaybe` | 40 | L3 — **SC-1 was `fromMaybe pubK addr`** |
+| `unsafePerformIO` | 28 | L3 |
+| irrefutable `Just x <-` | 9 | L3 — the class GHC misses |
+| `head` | 9 | L3 |
+| `!!` | 3 | L3 |
+
+~200 sites. Entirely tractable: the job becomes *adjudicate 200 specific
+locations*, not *audit a codebase*.
+
+`fromMaybe` deserves its own emphasis. It is idiomatic and almost always
+benign — and the single worst finding of the 3.2 release was one, where the
+safe value was the default and the attacker-controlled value was the override.
+Every one gets read.
+
+### What upstream's warnings already cover — and what they miss
+
+The build runs `-Wall -Werror -Wcompat -Wpartial-fields
+-Wincomplete-record-updates -Wincomplete-uni-patterns -Widentities`. That is a
+strong set and it removes a lot of what a naive audit would flag.
+
+**But `-Wincomplete-uni-patterns` does not catch `Just x <- ...` in a
+`MonadFail` do-block.** It desugars to `fail`, compiles clean, throws at
+runtime. Both `CreateProof.hs` sites are exactly this. **Do not assume a
+pattern is covered because a warning name sounds like it should be — verify
+against the actual GHC semantics.**
+
+### Tooling to add
+
+Upstream ships **no** static analysis config — no `.hlint.yaml`, no
+`weeder.dhall`, no `.stan.toml`. HLint in particular would mechanically flag
+partial-function idioms that GHC warnings do not.
+
+GHC and cabal are not installed on the build host; builds happen in Docker.
+Run the analysers in a container against the pinned commit rather than
+installing a toolchain.
+
+That upstream has no static analysis is itself an **Observation** for the
+report — a recommendation, not a defect, and it should be framed that way.
+
+### Order of operations per lens
+
+1. Mechanical enumeration produces the candidate list
+2. The list, not the codebase, is handed to the lens agent
+3. The agent adjudicates each site with its surrounding context
+4. Survivors go to adversarial validation
+
+A lens with no mechanical enumeration behind it (L1, L6, L7, L11) still needs
+a survey pass to produce entry points — but the same principle holds: give the
+agent a bounded list of specific questions, never a directory.
