@@ -443,7 +443,7 @@ must cite `file:line` valid at these SHAs, or it is unreproducible.
 
 | repo | ref | SHA |
 |---|---|---|
-| `kda-community/chainweb-node` | tag `3.2.1` | `d89bb530…` *(verify with `git rev-parse 3.2.1`)* |
+| `kda-community/chainweb-node` | tag `3.2.1` | `d89bb5307fc1d4a5bc2db61b42cb81816abcd4a4` |
 | `kda-community/chainweb-node` | `master` HEAD | `4beb65819a2069be35f38be7b226f471b70721d5` — 2026-08-21, "Add a comment" |
 | `kda-community/pact-5` | HEAD, = the 5.4.1 pin | `72f427605406df61be8284091922f1fe1af7541b` — 2026-08-21, "Revamp CI" |
 
