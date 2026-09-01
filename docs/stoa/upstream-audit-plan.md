@@ -433,3 +433,90 @@ report — a recommendation, not a defect, and it should be framed that way.
 A lens with no mechanical enumeration behind it (L1, L6, L7, L11) still needs
 a survey pass to produce entry points — but the same principle holds: give the
 agent a bounded list of specific questions, never a directory.
+
+---
+
+## 12. Phase 0 — commits pinned (2026-09-01)
+
+**Audit these exact commits. Do not audit a moving branch.** Every finding
+must cite `file:line` valid at these SHAs, or it is unreproducible.
+
+| repo | ref | SHA |
+|---|---|---|
+| `kda-community/chainweb-node` | tag `3.2.1` | `d89bb530…` *(verify with `git rev-parse 3.2.1`)* |
+| `kda-community/chainweb-node` | `master` HEAD | `4beb65819a2069be35f38be7b226f471b70721d5` — 2026-08-21, "Add a comment" |
+| `kda-community/pact-5` | HEAD, = the 5.4.1 pin | `72f427605406df61be8284091922f1fe1af7541b` — 2026-08-21, "Revamp CI" |
+
+Audit the **tagged release** (`3.2.1` / `72f42760`), not `master`. That is what
+operators actually run, and it is what a finding must be reproducible against.
+`master` is 4 commits ahead and only matters for checking whether something is
+already fixed there before reporting it.
+
+Local checkouts already on disk:
+- chainweb: `Z:\StoaChain\_infra\stoa-chain` (our fork — use `git show <sha>:path`
+  for upstream files, do **not** read our modified working tree by mistake)
+- pact-5: on AncientIntel at
+  `/home/ancientbox/cwbuild/basedist/src/pact-5-69cfe10fdbb4e6fdb904719fa6f8fc848d056186300b445317cec8701f87b298`
+
+> ⚠️ **Trap.** Our tree is *modified* — it carries the stoa.2 changes. Reading
+> `src/Chainweb/Version/Stoa.hs` or our gas model and reporting it as upstream
+> would be a false finding. Always read upstream files via
+> `git show <upstream-sha>:<path>`, never from the working tree.
+
+---
+
+## 13. Resuming cold — start here
+
+If you are picking this up with no memory of the planning conversation, this
+is the whole execution recipe.
+
+### Cost, measured expectation
+
+| | tokens | wall clock |
+|---|---|---|
+| **Phase 1 (L1 only)** | 300–500k | 30–45 min |
+| Full 11-lens audit, both repos | 4.5–6M (8M with iteration) | spread over sessions |
+
+**Validation dominates, and scales with findings produced** — a lens emitting
+40 candidates costs 4× one emitting 10, and is usually a lens that
+misunderstood its scope. Tight scoping is a cost control, not just a quality
+one.
+
+### Running a phase
+
+1. **Mechanical pre-pass.** Grep the candidate list (see section 11). Seconds.
+   Never send an agent to search the tree.
+2. **Dispatch lens agents in ONE message** so they run in parallel. Each gets
+   *only* its scope line from section 3 and its own candidate/entry-point list.
+   A shared generic list is not acceptable. Use `nectar:lens` — read-only by
+   construction. If unavailable, use `general-purpose` and write out the
+   finding format, severity scale, evidence rules, and findings-only rule in
+   full.
+3. **Dedup.** Same file + line + root cause = one finding, at the highest
+   severity any lens claimed. Record cross-lens agreement as confidence.
+4. **Dispatch validators in ONE message**, grouped by file/module, fresh
+   context, `nectar:validator`. Their job is to **refute**. Lean REFUTED when
+   ambiguous. No quotable evidence = REFUTED by definition.
+5. **Write up, then STOP.** Report to the user before starting the next phase.
+
+### Phase 1 concretely
+
+Hypothesis L1. Enumerate every check in `Pact5/Validations.hs`,
+`Pact4/Validations.hs`, `Mempool/InMem.hs`, `Chainweb.hs`
+(`validatingMempoolConfig`, `preInsertSingle` ~line 305), and
+`PactService/Pact5/ExecBlock.hs`. For each, determine whether it is reachable
+from `execValidateBlock`. Anything unreachable is a candidate.
+
+**Two known instances to expect** — if the sweep misses these, the sweep is
+broken and must be re-run before believing any negative result:
+- `assertSigSize` (the 100-signature cap) — mempool + preflight only
+- `_inmemTxMinGasPrice` (the gas price floor) — node config only
+
+That pair is the sweep's own test fixture. Use it.
+
+### Go / no-go after Phase 1
+
+- **A third instance found** → the hypothesis is productive, continue to Phase 2
+- **Nothing new** → strong evidence the codebase is tighter than assumed.
+  **Stop and say so.** That is a publishable result and it cost 3% of budget.
+  Do not grind on because the plan has six phases in it.
