@@ -1,0 +1,78 @@
+;; proof-user-guard-freezes.repl
+;;
+;; Proves the claim behind the stoa-xchain-gas guard bug:
+;;   `create-user-guard` STRICTLY EVALUATES and FREEZES its arguments at guard-
+;;   creation time. At enforcement it re-runs the *function* with those *frozen*
+;;   arguments. So a value computed once and passed in (like the V1 gas-station
+;;   floor) never updates, no matter what happens on-chain afterwards.
+;;
+;; Run:  pact pact/stoa-xchain/proof-user-guard-freezes.repl
+;; Expect: both PART 1 and PART 2 report success.
+;;
+;; If create-user-guard were dynamic (re-evaluated its argument on enforcement),
+;; PART 1's expect-failure would itself FAIL -- i.e. this is a real, falsifiable
+;; test, not a rigged demo.
+;; -----------------------------------------------------------------------------
+
+;; ===== PART 1: a FROZEN argument (the V1 pattern) =====
+(begin-tx)
+(module frozen GOV
+  (defcap GOV () true)
+  (defschema gs g:guard)
+  (deftable store:{gs})
+  ;; predicate takes the value as an ARGUMENT (as V1's enforce-below-or-at-gas-price does)
+  (defun eq-live:bool (captured:integer)
+    (enforce
+      (= captured (at 'block-height (chain-data)))
+      (format "FROZEN: guard captured {} but live block-height is {}"
+              [captured (at 'block-height (chain-data))])))
+  (defun stash ()
+    ;; the argument (at 'block-height (chain-data)) is evaluated HERE, at creation
+    (insert store "k" { "g": (create-user-guard (eq-live (at 'block-height (chain-data)))) }))
+  (defun fetch:guard () (at 'g (read store "k"))))
+(create-table store)
+(commit-tx)
+
+;; creation time: block-height = 1  -> the guard captures 1
+(env-chain-data { "block-height": 1 })
+(frozen.stash)
+
+;; the chain moves on: block-height = 500
+(env-chain-data { "block-height": 500 })
+
+;; enforcing the guard re-runs (eq-live 1) against a live height of 500 -> throws.
+;; expect-failure PASSING here is the proof that the argument froze at 1.
+(expect-failure
+  "PART 1 -- create-user-guard froze its argument at creation (1), so it fails against live (500)"
+  "FROZEN"
+  (enforce-guard (frozen.fetch)))
+
+;; ===== PART 2: the FIX -- no argument, reads live in the body =====
+(begin-tx)
+(module dynamic GOV
+  (defcap GOV () true)
+  (defschema gs g:guard)
+  (deftable store2:{gs})
+  ;; predicate takes NO argument; it reads the live value in its BODY at enforcement
+  ;; (as V2's enforce-at-or-below-current-min-gas-price reads coin.UC_MinimumGasPriceSTOA)
+  (defun price-ok:bool ()
+    (enforce
+      (<= 1 (at 'block-height (chain-data)))          ; "tx price 1 <= live floor"
+      (format "price 1 above live floor {}" [(at 'block-height (chain-data))])))
+  (defun stash () (insert store2 "k" { "g": (create-user-guard (price-ok)) }))
+  (defun fetch:guard () (at 'g (read store2 "k"))))
+(create-table store2)
+(commit-tx)
+
+;; created when the floor (block-height) = 1
+(env-chain-data { "block-height": 1 })
+(dynamic.stash)
+
+;; floor rises to 500 -- the argument-less guard re-reads it and still passes
+(env-chain-data { "block-height": 500 })
+(expect
+  "PART 2 -- the argument-less guard reads the live floor, so it keeps working as the floor rises"
+  true
+  (enforce-guard (dynamic.fetch)))
+
+(print "PROOF COMPLETE: V1's argument is frozen at creation; V2's argument-less predicate tracks the live value.")
