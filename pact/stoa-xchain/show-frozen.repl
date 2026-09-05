@@ -1,0 +1,26 @@
+;; show-frozen.repl -- print pact's OWN error text, proving the captured value froze.
+(begin-tx)
+(module frozen GOV
+  (defcap GOV () true)
+  (defschema gs g:guard)
+  (deftable store:{gs})
+  (defun eq-live:bool (captured:integer)
+    (enforce
+      (= captured (at "block-height" (chain-data)))
+      (format "FROZEN: guard captured {} but live block-height is {}"
+              [captured (at "block-height" (chain-data))])))
+  (defun stash ()
+    (insert store "k" { "g": (create-user-guard (eq-live (at "block-height" (chain-data)))) }))
+  (defun fetch:guard () (at "g" (read store "k"))))
+(create-table store)
+(commit-tx)
+
+(env-chain-data { "block-height": 1 })
+(frozen.stash)
+(print "guard created at block-height 1")
+
+(env-chain-data { "block-height": 500 })
+(print "chain advanced to block-height 500; now enforcing the guard:")
+
+;; no expect-failure wrapper -- let pact throw so we SEE the message
+(enforce-guard (frozen.fetch))
