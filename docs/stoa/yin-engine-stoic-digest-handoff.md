@@ -13,24 +13,45 @@ that can be quoted directly, so nothing has to be reconstructed or invented.
 The article's arc is the economy of the chain. The Yin Engine is the closing
 move, and it only reads as a closing move if the *other* half is set up first.
 
-**The pairing, in one sentence:** block rewards fall to zero on a fixed
-schedule, and the minimum fee rises on a fixed schedule — so the chain's
-security funding hands off from emission to fees without anyone deciding when.
+**The pairing, in one sentence:** emission thins toward a permanent trickle on a
+fixed schedule, and the minimum fee rises on a fixed schedule — two curves set
+before the first block, moving in opposite directions, with nobody deciding
+anything.
 
-| | direction | from | to | over |
-|---|---|---|---|---|
-| **Emission** (block reward) | falls | 4.604266176 STOA/block at genesis | **0** at block 127,278,720 | ~124 years (~2150) |
-| **Yin Engine** (fee floor) | rises | 10,000 ANU/gas at genesis | **1,000,000 ANU** cap | ~339 years (~2364) |
+**Yang — emission.** Computed by `coin.UC_YearEmission`, a closed-form function
+of the chain's year:
 
-Emission is already fixed in `rewards/miner_rewards.csv` and has been since
-genesis. The floor was *computable* since genesis but **enforced by nothing**.
-That is the gap this closes — which is precisely why it belongs at the end of
-the piece rather than the middle.
+```
+emission(t) = (500,000 t² + 99,500,000 t + 47,916,000,000) / ((t + 99)(t + 100))
+```
 
-> ⚠️ **Confirm before publishing:** I have inferred that the decaying emission
-> is the "Yang" to this "Yin". That reading is well supported by the two
-> schedules, but the Yin/Yang framing is yours — please state formally what Yang
-> is so the article does not put words in the project's mouth.
+| chain year | emission that year | supply | inflation |
+|---|---|---|---|
+| 0 | 4,840,000 STOA | 16,000,000 | 30.25% |
+| 10 | 4,083,486 | 60.8M | 6.71% |
+| 100 | 1,579,548 | 284.1M | 0.56% |
+| 338 *(the year Yin caps)* | 724,476 | 520.7M | 0.139% |
+| 1000 | 535,541 | 910.9M | 0.059% |
+| → ∞ | **500,000** | grows without bound | **→ 0%** |
+
+Emission **never reaches zero**. It decays asymptotically to a permanent
+500,000 STOA per year — a tail emission. Because supply keeps growing while the
+tail stays flat, the *inflation rate* tends to zero even though issuance never
+stops. Security stays funded forever without the supply ever being capped.
+
+**Yin — the fee floor.** Rises 10,000 → 1,000,000 ANU/gas over ~339 years.
+
+> ⚠️ **Do not use `rewards/miner_rewards.csv` for this section.** It is present
+> for interface compatibility only and shows a schedule decaying to zero at
+> block 127,278,720. StoaChain does not use it: `coin.coinbase` explicitly notes
+> the passed amount is "kept for csv read compatibility" and computes the real
+> figure via `URC_Emissions` → `UC_YearEmission`. Quoting the CSV would state
+> the tokenomics backwards.
+
+> ⚠️ **Confirm before publishing:** the coin contract itself refers to "Yang
+> Emissions" (`stoa-genesis-4.pact:1411`), so the pairing is the project's own
+> language, not my inference. Still worth stating formally in the article what
+> Yang covers.
 
 ---
 
@@ -71,6 +92,51 @@ will be worth.
 The counterpart to that: it is a **floor**, not a price. It sets what you cannot
 go below. It does not set what you pay in a busy block, and it does not cap
 anything.
+
+### The obvious objection, and the answer
+
+A reader who follows the argument will immediately ask: *if STOA becomes
+enormously valuable, doesn't a rising fee floor make the chain unusable?*
+
+It is a fair question and it deserves a straight answer in the article, because
+the answer is good.
+
+The floor is denominated in **ANU**, the smallest unit of STOA — currently one
+trillionth. If STOA appreciates far enough that gas becomes expensive in real
+terms, the response is to **increase the precision**: make one STOA divide into
+ten trillion ANU instead of one trillion. An ANU becomes worth ten times less,
+so the same floor costs ten times less to pay.
+
+What makes this the right lever rather than a patch is what it *doesn't* touch:
+
+> **The Yin engine itself never changes.** The floor still runs 10,000 →
+> 1,000,000 ANU, still rises by exactly 1 ANU every three hours, still takes
+> the same 339 years. The curve is never re-based, never slowed, never reset.
+> Only the size of the unit changes underneath it.
+
+The alternative — cutting the floor's constants — would work economically but
+would break the schedule every time it was used: dividing the range by ten
+either exhausts it in 34 years instead of 339, or forces the interval from
+3 hours to 30 and throws away nine tenths of the granularity. Precision costs
+none of that.
+
+So the honest framing for readers is: **the schedule is permanent; the unit is
+scalable.** The promise that the floor only ever rises, on a fixed schedule,
+survives any amount of appreciation — because appreciation is absorbed by the
+denomination, not by the engine.
+
+Two caveats worth stating rather than glossing:
+
+- It is **one-way and coarse** — precision can only increase, in factors of ten.
+  That is a deliberate trade for keeping the schedule intact.
+- The **trigger is a human decision**, not an automatic one. The chain cannot
+  observe a market price without an oracle, and an oracle would be a trusted
+  third party inside consensus. So the criterion is watched off-chain and the
+  change is scheduled on-chain at a future block — the same way every other fork
+  works, including this one.
+
+Design note with the full mechanism, including the replay hazard that makes it
+non-trivial to implement: `docs/stoa/precision-scaling-design-note.md`.
 
 ---
 
