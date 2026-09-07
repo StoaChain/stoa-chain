@@ -25,10 +25,11 @@
 --   2. After the height, the identical pricing is REJECTED -- and rejected at
 --      submission, because the mempool shares 'validateParsedChainwebTx' with
 --      block validation.
---   3. After the height, a transaction priced at the current floor is accepted
---      and mined. This is the one that matters most: it shows the fork does not
---      simply break everything, and that a correctly updated client keeps
---      working across the boundary.
+--   3. After the height, ONE ANU below the floor is still rejected, and paying
+--      EXACTLY the floor is accepted and mined. Together those pin the
+--      comparison to >= rather than >, through the whole submit path -- and the
+--      second shows the fork does not simply break everything, so a correctly
+--      updated client keeps working across the boundary.
 --
 module Chainweb.Test.Stoa.YinTransition
 ( tests
@@ -126,7 +127,19 @@ tests baseRdb = testGroup "Yin engine fork transition"
                     & P.throws ? P.match _FailureResponse ? P.fun responseBody
                     ? textContains "below minimum gas price"
 
-                -- (3) AFTER the fork: paying the floor still works.
+                -- (3) AFTER the fork: ONE ANU under the floor is still rejected.
+                -- This is the boundary that matters -- (2) underpays by ~1,568
+                -- ANU, which would also fail a sloppier comparison. This one
+                -- fails only if the check is exact.
+                step "post-fork: floor MINUS ONE ANU is REJECTED"
+                edgeTx <- mkTx (floorNow - 1)
+                send fx v chain0 [edgeTx]
+                    & P.throws ? P.match _FailureResponse ? P.fun responseBody
+                    ? textContains "below minimum gas price"
+
+                -- (4) AFTER the fork: paying EXACTLY the floor works. Together
+                -- with (3) this pins the comparison to >= rather than >, through
+                -- the full submit path rather than just the predicate.
                 step "post-fork: floor-priced transaction is accepted and mined"
                 okTx <- mkTx floorNow
                 send fx v chain0 [okTx]
