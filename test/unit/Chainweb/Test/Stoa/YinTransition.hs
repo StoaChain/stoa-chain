@@ -53,7 +53,7 @@ import Control.Monad.Trans.Resource (runResourceT)
 
 import Data.Decimal (DecimalRaw(..))
 
-import Pact.Core.ChainData (TxCreationTime(..))
+import Pact.Core.ChainData (TTLSeconds(..), TxCreationTime(..))
 import Pact.Core.Command.Types hiding (ChainId)
 import Pact.Core.Gas
 
@@ -145,5 +145,30 @@ tests baseRdb = testGroup "Yin engine fork transition"
                 send fx v chain0 [okTx]
                 advanceAllChains_ fx
                 poll fx v chain0 [cmdToRequestKey okTx]
+                    >>= P.list [P.match _Just successfulTx]
+
+                -- (5) A STALE transaction is judged against ITS OWN floor.
+                --
+                -- Built with a creationTime four ticks (12h) in the past and
+                -- priced at the floor as it was THEN -- four ANU below the floor
+                -- right now. If the check used block time, this would fail. It
+                -- must not: otherwise every transaction waiting in a mempool
+                -- would start failing the moment the floor ticked, every three
+                -- hours. The protocol allows a 2-day TTL, which is 16 ticks, so
+                -- this has to hold.
+                step "post-fork: a stale transaction still passes at its own floor"
+                let staleTime  = now - (4 * 10_800)
+                    staleFloor = stoaMinGasPriceAnu staleTime
+                assertBool "the backdated floor must actually be lower"
+                    (staleFloor < floorNow)
+                staleTx <- buildTextCmd v
+                    $ set cbGasPrice (anuPrice staleFloor)
+                    $ set cbCreationTime (Just (TxCreationTime staleTime))
+                    $ set cbTTL (TTLSeconds 172_800)      -- 2 days, the maximum
+                    $ set cbRPC (mkExec' "1")
+                    $ defaultCmd chain0
+                send fx v chain0 [staleTx]
+                advanceAllChains_ fx
+                poll fx v chain0 [cmdToRequestKey staleTx]
                     >>= P.list [P.match _Just successfulTx]
     ]
