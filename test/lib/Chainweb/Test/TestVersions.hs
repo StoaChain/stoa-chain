@@ -17,6 +17,7 @@ module Chainweb.Test.TestVersions
     , timedConsensusVersion
     , instantCpmTestVersion
     , pact5InstantCpmTestVersion
+    , yinTransitionCpmTestVersion
     , pact5CheckpointerTestVersion
     , pact5SlowCpmTestVersion
     , instantCpmTransitionTestVersion
@@ -149,6 +150,12 @@ testVersions = _versionName <$> concat
     ,   [ pact53TransitionCpmTestVersion (knownChainGraph g)
         | g :: KnownGraph <- [minBound..maxBound]
         ]
+        -- APPEND-ONLY below this point: a test version's `versionCode` is
+        -- its index in this list, so inserting into the middle silently
+        -- renumbers every version after it.
+    ,   [ yinTransitionCpmTestVersion (knownChainGraph g)
+        | g :: KnownGraph <- [minBound..maxBound]
+        ]
     ]
 
 -- | Details common to all test versions thus far.
@@ -205,6 +212,8 @@ timedConsensusVersion forkNum g1 g2 = buildTestVersion $ \v -> v
     & versionForks .~ tabulateHashMap (\case
         SkipTxTimingValidation -> AllChains $ ForkAtBlockHeight (BlockHeight 2)
         -- pact is disabled, we don't care about pact forks
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
     )
     & versionQuirks .~ noQuirks
@@ -229,6 +238,52 @@ timedConsensusVersion forkNum g1 g2 = buildTestVersion $ \v -> v
     & versionForkNumber .~ forkNum
 
 -- | A test version without Pact or PoW.
+-- | Like 'pact5InstantCpmTestVersion', but with the StoaChain minimum gas price
+-- fork ("Yin engine") ENABLED AT BLOCK HEIGHT 20, so that tests can mine ACROSS
+-- the activation boundary. Every other fork is at genesis.
+--
+-- Two things make this work despite test versions having a 1970 genesis:
+-- CutFixture mines with REAL block times, and it deliberately creates a first
+-- block so that transactions are not rejected for being far ahead of a 1970
+-- parent. The floor a transaction faces here is therefore the real present-day
+-- floor -- currently around 11,570 ANU.
+--
+-- 'defaultCmd' pays 0.0001 STOA = 1e8 ANU, orders of magnitude above that, so
+-- ordinary transactions are unaffected. A test has to price deliberately low
+-- (0.00000001 STOA = 10,000 ANU, the legacy static minimum) to be rejected.
+--
+yinTransitionCpmTestVersion :: ChainGraph -> ChainwebVersion
+yinTransitionCpmTestVersion g = buildTestVersion $ \v -> v
+    & cpmTestVersion g
+    & versionName .~ ChainwebVersionName ("yin-transition-CPM-" <> toText g)
+    & versionInitialGasModel .~ AllChains ( (ForkAtBlockHeight 5, post32GasModel) `Above`
+                                            (ForkAtBlockHeight 4, post31GasModel) `Above`
+                                            Bottom (minBound, pre31GasModel))
+    & versionForks .~ tabulateHashMap (\case
+        SPVBridge -> AllChains ForkNever
+        StoaMinGasPrice -> AllChains (ForkAtBlockHeight (BlockHeight 20))
+        _ -> AllChains ForkAtGenesis
+        )
+    & versionQuirks .~ noQuirks
+    & versionGenesis .~ VersionGenesis
+        { _genesisBlockPayload = onChains $
+            (unsafeChainId 0, PIN0.payloadBlock) :
+            [(n, PINN.payloadBlock) | n <- HS.toList (unsafeChainId 0 `HS.delete` graphChainIds g)]
+        , _genesisBlockTarget = AllChains maxTarget
+        , _genesisTime = AllChains $ BlockCreationTime epoch
+        }
+    & versionUpgrades .~ AllChains mempty
+    & versionVerifierPluginNames .~ AllChains
+        (Bottom
+            ( minBound
+            , Set.fromList $ map VerifierName ["allow", "hyperlane_v3_announcement", "hyperlane_v3_message","signed_list"]
+            )
+        )
+    & versionSpvProofRootValidWindow .~
+        ( (ForkAtBlockHeight $ BlockHeight 5, Nothing) `Above`
+            Bottom (minBound, Just 20)
+        )
+
 pact5CheckpointerTestVersion :: ChainGraph -> ChainwebVersion
 pact5CheckpointerTestVersion g1 = buildTestVersion $ \v -> v
     & testVersionTemplate
@@ -238,6 +293,8 @@ pact5CheckpointerTestVersion g1 = buildTestVersion $ \v -> v
     & versionForks .~ tabulateHashMap (\case
         SkipTxTimingValidation -> AllChains $ ForkAtBlockHeight (BlockHeight 2)
         -- pact is disabled, we don't care about pact forks
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
     )
     & versionQuirks .~ noQuirks
@@ -399,6 +456,8 @@ quirkedGasInstantCpmTestVersion g = buildTestVersion $ \v -> v
     & versionName .~ ChainwebVersionName ("quirked-instant-CPM-" <> toText g)
     & versionForks .~ tabulateHashMap (\case
         Pact5Fork -> AllChains ForkNever
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis)
     & versionQuirks .~ VersionQuirks
         { _quirkGasFees = onChain (unsafeChainId 0)
@@ -421,6 +480,8 @@ quirkedGasPact5InstantCpmTestVersion g = buildTestVersion $ \v -> v
     & cpmTestVersion g
     & versionName .~ ChainwebVersionName ("quirked-pact5-instant-CPM-" <> toText g)
     & versionForks .~ tabulateHashMap (\case
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis)
     & versionQuirks .~ VersionQuirks
         { _quirkGasFees = onChain (unsafeChainId 0)
@@ -462,6 +523,8 @@ instantCpmTestVersion g = buildTestVersion $ \v -> v
     & versionForks .~ tabulateHashMap (\case
         -- pact 5 is off
         Pact5Fork -> AllChains ForkNever
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
         )
     & versionQuirks .~ noQuirks
@@ -492,6 +555,8 @@ pact5InstantCpmTestVersion g = buildTestVersion $ \v -> v
         -- SPV Bridge is not in effect for Pact 5 yet.
         SPVBridge -> AllChains ForkNever
 
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
         )
     & versionQuirks .~ noQuirks
@@ -524,6 +589,8 @@ pact53TransitionCpmTestVersion g = buildTestVersion $ \v -> v
 
         Chainweb230Pact -> AllChains $ ForkAtBlockHeight (BlockHeight 5)
 
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
         )
     & versionQuirks .~ noQuirks
@@ -554,6 +621,8 @@ pact5SlowCpmTestVersion g = buildTestVersion $ \v -> v
         Pact5Fork -> onChains [ (cid, ForkAtBlockHeight (succ $ genesisBlockHeight v cid)) | cid <- HS.toList $ graphChainIds g ]
         -- SPV Bridge is not in effect for Pact 5 yet.
         SPVBridge -> AllChains ForkNever
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
         )
     & versionQuirks .~ noQuirks
@@ -586,6 +655,8 @@ instantCpmTransitionTestVersion g = buildTestVersion $ \v -> v
         -- SPV Bridge is not in effect for Pact 5 yet.
         SPVBridge -> AllChains ForkNever
 
+        -- StoaChain-only consensus fork: never on by default in test versions.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
         )
     & versionQuirks .~ noQuirks

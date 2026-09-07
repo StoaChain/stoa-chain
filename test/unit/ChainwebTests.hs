@@ -55,6 +55,7 @@ import qualified Chainweb.Test.Mempool.RestAPI (tests)
 import qualified Chainweb.Test.Mempool.Sync (tests)
 import qualified Chainweb.Test.MinerReward (tests)
 import qualified Chainweb.Test.Stoa.GasFloor (tests)
+import qualified Chainweb.Test.Stoa.YinTransition (tests)
 import qualified Chainweb.Test.Mining (tests)
 import qualified Chainweb.Test.Misc (tests)
 import qualified Chainweb.Test.Pact4.Checkpointer (tests)
@@ -167,6 +168,7 @@ suite rdb =
         , Chainweb.Test.Pact5.RemotePactTest.tests rdb
         , Chainweb.Test.Pact5.HyperlanePluginTests.tests rdb
         , Chainweb.Test.Pact5.SignedListPluginTests.tests rdb
+        , Chainweb.Test.Stoa.YinTransition.tests rdb
         , Chainweb.Test.Pact5.TransactionTests.tests
         , Chainweb.Test.Roundtrips.tests
         , Chainweb.Test.RestAPI.tests rdb
