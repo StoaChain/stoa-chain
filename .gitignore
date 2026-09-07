@@ -64,3 +64,5 @@ docs/stoa/upstream-audit-plan.md
 docs/stoa/upstream-audit-report.md
 docs/stoa/chainweb-3.2-audit.md
 docs/stoa/build-audit-docx.py
+docs/stoa/vulnerabilities-fixed-in-3.2.md
+docs/stoa/build-xchain-paper.py
