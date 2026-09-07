@@ -164,6 +164,48 @@ The `/local` read is still worth doing occasionally as a **live cross-check**: i
 the chain's answer ever disagrees with your local formula, something has drifted
 and you want to know loudly.
 
+### Waiting in the mempool, and paying more than the floor
+
+Two behaviours worth being explicit about, because both are counter-intuitive
+and both are now covered by tests.
+
+**A pending transaction never goes stale because of the floor.** The rule is
+`gasPrice >= F(creationTime)`, and `creationTime` is signed into the
+transaction. So the floor it is judged against is frozen at the moment you
+stamped it. A transaction priced at 11,580 ANU that sits ten hours in a mempool
+while the live floor climbs past it is **still valid and still mineable** — it
+is measured against its own floor, not today's.
+
+The only clock working against a pending transaction is the **TTL**
+(`creationTime + ttl > parentBlockTime`). Protocol maximum is 2 days. Since a
+tick is 3 hours, a transaction can legitimately outlive 16 floor increases.
+
+> So: set `ttl` to how long you are willing to wait, and ignore the floor. The
+> `ttl: 600` in the example above is fine for an interactive send and too short
+> if you expect congestion.
+
+Had the rule compared against *block* time instead, every queued transaction
+would have started failing the moment the floor ticked, every three hours, with
+no action by the sender — a failure that is close to undiagnosable from a wallet.
+
+**Paying above the floor is always accepted.** The consensus rule is a floor
+only; there is no upper bound. You may pay any gas price you like, and you
+should if you want priority during congestion.
+
+The exception is when a **gas station** is paying, because a station has to cap
+what it will spend on your behalf:
+
+| payer | will cover up to |
+|---|---|
+| your own account | no limit — pay whatever you want |
+| **DALOS gas station** | floor **+ 100 ANU** |
+| **cross-chain gas stations** | floor **+ 10 ANU** |
+
+Both buffers absorb the case where a tick boundary falls between your
+`creationTime` and the block that mines you. If you price above a station's
+buffer the transaction is still perfectly valid — the station simply will not
+pay for it, so it needs a funded sender of its own.
+
 ### Previewing a station-paid transaction
 
 Gas-station guards read `gas-price` **and** `gas-limit` out of `chain-data`, and in
