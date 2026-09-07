@@ -55,3 +55,7 @@ TAGS
 .direnv/
 .envrc
 .planning*.bak
+
+# Confidential audit deliverables — never commit these
+docs/stoa/*.docx
+docs/stoa/*.pdf

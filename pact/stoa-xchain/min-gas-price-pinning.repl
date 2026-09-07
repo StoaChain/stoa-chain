@@ -20,7 +20,7 @@
 ;;
 ;; PINNING TEST for the Yin engine minimum gas price.
 ;;
-;; The floor now exists in three implementations that MUST agree exactly:
+;; The floor now exists in FOUR implementations that MUST agree exactly:
 ;;
 ;;   1. Haskell  -- Chainweb.Version.Stoa.GasFloor.stoaMinGasPriceAnu
 ;;                  (chainweb: src/Chainweb/Version/Stoa/GasFloor.hs)
@@ -30,6 +30,10 @@
 ;;                  it, and clients dirty-read it for display.
 ;;   3. Clients  -- Ouronet UI / Stoa Wallet, per
 ;;                  docs/stoa/yin-engine-client-handoff.md
+;;   4. Explorer -- the StoaChain Explorer GAS FLOOR panel, which computes the
+;;                  schedule LOCALLY ("no chain read"). It breaks nothing when it
+;;                  drifts -- it just misinforms everyone reading it -- so it is
+;;                  the one most likely to rot unnoticed. Hold it to this list.
 ;;
 ;; A node computing a different floor than its peers is a chain split, so this
 ;; is not a nicety. The vector list below is the CONTRACT. It is byte-for-byte
@@ -106,7 +110,7 @@
 ;; Semantically odd, deliberately preserved, and matched exactly by Haskell's
 ;; `div` (which truncates toward negative infinity, like Pact's `floor`).
 ;; Unreachable in production -- assertTxTimeRelativeToParent bounds creationTime
-;; to within its TTL of the parent block -- but pinned so the three
+;; to within its TTL of the parent block -- but pinned so the four
 ;; implementations cannot silently diverge on rounding.
 (begin-tx)
 (env-chain-data { "block-time": (time "2026-02-23T17:59:59Z") })
