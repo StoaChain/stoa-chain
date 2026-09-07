@@ -66,3 +66,6 @@ docs/stoa/chainweb-3.2-audit.md
 docs/stoa/build-audit-docx.py
 docs/stoa/vulnerabilities-fixed-in-3.2.md
 docs/stoa/build-xchain-paper.py
+
+# Private audit material — the whole folder, never committed.
+docs/stoa/_private/
