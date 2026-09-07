@@ -59,3 +59,8 @@ TAGS
 # Confidential audit deliverables — never commit these
 docs/stoa/*.docx
 docs/stoa/*.pdf
+docs/stoa/upstream-audit-findings.md
+docs/stoa/upstream-audit-plan.md
+docs/stoa/upstream-audit-report.md
+docs/stoa/chainweb-3.2-audit.md
+docs/stoa/build-audit-docx.py
