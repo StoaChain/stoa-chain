@@ -275,6 +275,7 @@ library
         , Chainweb.Version.RecapDevelopment
         , Chainweb.Version.Registry
         , Chainweb.Version.Stoa
+        , Chainweb.Version.Stoa.GasFloor
         , Chainweb.Version.Testnet04
         , Chainweb.Version.Utils
         , Chainweb.WebBlockHeaderDB

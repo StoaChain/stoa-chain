@@ -65,6 +65,32 @@ stoa = ChainwebVersion
         -- would read as always-true and retroactively apply 5.4.1 semantics
         -- to our whole history, breaking replay.
         Chainweb32 -> AllChains (ForkAtBlockHeight $ BlockHeight 516_500)
+
+        -- StoaMinGasPrice gates the "Yin engine": the protocol minimum gas
+        -- price becomes a function of time rather than a constant, and is
+        -- enforced at CONSENSUS rather than only at mempool admission. From
+        -- this height a transaction is rejected unless
+        --   gasPrice >= stoaMinGasPriceAnu(its own creationTime)
+        -- See "Chainweb.Version.Stoa.GasFloor" for the formula and the four
+        -- constants, which are mirrored on-chain by coin.UC_MinimumGasPriceANU.
+        --
+        -- ACTIVATION HEIGHT 600,000, chosen 2026-09-07 when the tip was
+        -- 549,940 -- about 50,060 blocks, or 17.8 days at our observed
+        -- 30.77 s block time. The binding constraint on this height is not
+        -- node upgrades but WALLET upgrades: everything before the fork is
+        -- backward compatible, but from this height any client still pricing
+        -- at the legacy static 1e-8 is rejected. Chrome extension and mobile
+        -- both need store review and user adoption inside that window.
+        --
+        -- Every node must be on v3.2.1-stoa.3 before this height or it will
+        -- stall, exactly as with Chainweb32 above.
+        --
+        -- The height MUST stay ahead of the live tip, and MUST NOT be at
+        -- genesis -- see the note above the fork table. Moving it further out
+        -- is safe at any time before it is reached; moving it earlier is safe
+        -- only while it stays ahead of the tip.
+        StoaMinGasPrice -> AllChains (ForkAtBlockHeight $ BlockHeight 600_000)
+
         _ -> AllChains ForkAtGenesis
     , _versionUpgrades = AllChains mempty
     , _versionGraphs = Bottom (minBound, petersenChainGraph)

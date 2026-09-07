@@ -19,6 +19,9 @@ module Chainweb.Pact5.Validations
   -- * Validation checks
 , assertChainId
 , assertGasPrice
+, assertMinGasPrice
+, txMinGasPriceAnu
+, txGasPriceAnu
 , assertNetworkId
 , assertSigSize
 , assertTxSize
@@ -35,7 +38,7 @@ module Chainweb.Pact5.Validations
 
 import Control.Lens
 
-import Data.Decimal (decimalPlaces)
+import Data.Decimal (Decimal, DecimalRaw(..), decimalPlaces)
 import Data.Maybe
 import Data.Either (isRight)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
@@ -47,10 +50,13 @@ import Data.Word (Word8)
 -- internal modules
 
 import Chainweb.BlockHeader
+import Chainweb.BlockHeight (BlockHeight)
 import Chainweb.BlockCreationTime (BlockCreationTime(..))
 import Chainweb.Pact.Types
 import Chainweb.Time (Seconds(..), Time(..), secondsToTimeSpan, scaleTimeSpan, second, add)
 import Chainweb.Version
+import Chainweb.Version.Guards (enforceStoaMinGasPrice)
+import Chainweb.Version.Stoa.GasFloor (stoaMinGasPriceAnu)
 
 import qualified Pact.Core.Command.Types as P
 import qualified Pact.Core.ChainData as P
@@ -122,8 +128,59 @@ assertChainId cid0 cid1 = chainIdToText cid0 == P._chainId cid1
 -- | Check and assert that 'GasPrice' is rounded to at most 12 decimal
 -- places.
 --
+-- DO NOT RELAX THIS. StoaChain's minimum-gas-price check
+-- ('Chainweb.Version.Stoa.GasFloor') compares gas prices in whole ANU by
+-- multiplying the price by 1e12. Twelve decimal places is exactly ANU
+-- granularity, so this bound is what guarantees the scaled value is integral
+-- and the consensus comparison is exact. Allowing more places would let a
+-- transaction carry sub-ANU precision that the floor comparison cannot
+-- represent.
+--
 assertGasPrice :: P.GasPrice -> Bool
 assertGasPrice (P.GasPrice gp) = decimalPlaces gp <= defaultMaxCoinDecimalPlaces
+
+-- | The StoaChain protocol minimum gas price for this transaction, in whole ANU.
+--
+-- Evaluated at the transaction's OWN @creationTime@ -- not the block time and
+-- not "now". That choice is what makes the rule raceless for clients: a client
+-- stamps @creationTime@ and derives @gasPrice@ from the same value that this
+-- function is later handed.
+--
+txMinGasPriceAnu :: P.Command (P.Payload P.PublicMeta c) -> Integer
+txMinGasPriceAnu tx = stoaMinGasPriceAnu creationTime
+  where
+    P.TxCreationTime creationTime =
+        view (P.cmdPayload . P.pMeta . P.pmCreationTime) tx
+
+-- | The transaction's gas price scaled UP into whole ANU.
+--
+-- Scaling up by multiplying, never down by dividing: 'assertGasPrice' bounds the
+-- price to 12 decimal places, which is exactly ANU granularity, so this product
+-- is always integral and comparisons against it are exact.
+--
+txGasPriceAnu :: P.Command (P.Payload P.PublicMeta c) -> Decimal
+txGasPriceAnu tx = gp * 1000000000000
+  where
+    P.GasPrice gp = view (P.cmdPayload . P.pMeta . P.pmGasPrice) tx
+
+-- | Check and assert that a transaction pays at least the StoaChain protocol
+-- minimum gas price -- the "Yin engine".
+--
+-- Vacuously true before the @StoaMinGasPrice@ fork height, and on every
+-- 'ChainwebVersion' except @stoa@ (where the fork is 'ForkNever'), so this is a
+-- no-op everywhere else.
+--
+-- Paying EXACTLY the floor must pass; that is the price a correct client emits.
+--
+assertMinGasPrice
+    :: ChainwebVersion
+    -> ChainId
+    -> BlockHeight
+    -> P.Command (P.Payload P.PublicMeta c)
+    -> Bool
+assertMinGasPrice v cid bh tx
+    | not (enforceStoaMinGasPrice v cid bh) = True
+    | otherwise = txGasPriceAnu tx >= fromIntegral (txMinGasPriceAnu tx)
 
 -- | Check and assert that the 'GasLimit' of a transaction is less than or eqaul to
 -- the block gas limit

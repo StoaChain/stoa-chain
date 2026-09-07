@@ -33,6 +33,9 @@ devnet = ChainwebVersion
     { _versionCode = ChainwebVersionCode 0x00000002
     , _versionName = ChainwebVersionName "development"
     , _versionForks = tabulateHashMap $ \case
+        -- StoaChain-only fork; must NOT be swallowed by the wildcard below,
+        -- or devnet would enforce the Stoa gas floor from genesis.
+        StoaMinGasPrice -> AllChains ForkNever
         _ -> AllChains ForkAtGenesis
     , _versionUpgrades = AllChains mempty
     , _versionGraphs = Bottom (minBound, twentyChainGraph)

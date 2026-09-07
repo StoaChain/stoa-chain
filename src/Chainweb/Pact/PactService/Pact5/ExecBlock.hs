@@ -61,6 +61,7 @@ import Data.Vector (Vector)
 import Data.Vector qualified as V
 import Data.Void
 import Pact.Core.ChainData hiding (ChainId)
+import Pact.Parse (ParsedDecimal(..))
 import Pact.Core.Command.Types qualified as Pact5
 import Pact.Core.Persistence qualified as Pact5
 import Pact.Core.Hash
@@ -492,6 +493,7 @@ validateParsedChainwebTx _logger v cid db _blockHandle txValidationTime bh isGen
       checkChain
       checkTxSigs tx
       checkTimes tx
+      checkGasPrice tx
       return ()
   where
 
@@ -520,6 +522,34 @@ validateParsedChainwebTx _logger v cid db _blockHandle txValidationTime bh isGen
                throwError InsertErrorTTLExpired
            | otherwise -> do
                pure ()
+
+    -- | StoaChain's "Yin engine": from the StoaMinGasPrice fork height a
+    -- transaction must pay at least the protocol minimum gas price as of its
+    -- OWN creation time -- not the block time, and not "now". Using the
+    -- transaction's own field is what makes the rule raceless for clients:
+    -- they derive gasPrice from the very value they stamp, and this function
+    -- is later handed that same value.
+    --
+    -- The comparison is done in whole ANU by scaling the gas price UP, never
+    -- by dividing the floor DOWN. 'Pact5.assertGasPrice' caps the price at 12
+    -- decimal places, which is exactly ANU granularity, so the scaled value is
+    -- always integral and the comparison is exact. Do NOT rewrite this as a
+    -- division, and do not relax that precision check.
+    --
+    -- ForkNever on every version except stoa, so this is a no-op elsewhere.
+    -- The decision itself lives in 'Pact5.assertMinGasPrice' so that it is pure
+    -- and unit-testable without a database; this is only the plumbing that turns
+    -- a False into the right InsertError. 'InsertErrorUndersized' already carries
+    -- exactly (actual, minimum), so no new error constructor is needed.
+    checkGasPrice :: Pact5.Transaction -> ExceptT InsertError IO ()
+    checkGasPrice t =
+        unless (Pact5.assertMinGasPrice v cid bh pay) $
+            throwError $ InsertErrorUndersized
+                (Pact4.GasPrice (ParsedDecimal gasPriceDec))
+                (Pact4.GasPrice (ParsedDecimal (Decimal 12 (Pact5.txMinGasPriceAnu pay))))
+      where
+        pay = view Pact5.payloadObj <$> t
+        P.GasPrice gasPriceDec = view (Pact5.cmdPayload . Pact5.pMeta . pmGasPrice) pay
 
     checkTxHash :: Pact5.Transaction -> ExceptT InsertError IO ()
     checkTxHash t = do

@@ -71,6 +71,8 @@ import Pact.Interpreter(PactDbEnv(..))
 import qualified Pact.JSON.Encode as J
 import qualified Pact.Parse as Pact4 hiding (parsePact)
 import qualified Pact.Types.Command as Pact4
+import qualified Pact.Types.ChainMeta as Pact4
+import Data.Decimal (Decimal, DecimalRaw(..))
 import Pact.Types.ExpParser (mkTextInfo, ParseEnv(..))
 import qualified Pact.Types.Hash as Pact4
 import Pact.Types.RPC
@@ -97,6 +99,7 @@ import Chainweb.Utils hiding (check)
 import Chainweb.Version
 import Chainweb.ForkState (pact4ForkNumber)
 import Chainweb.Version.Guards
+import Chainweb.Version.Stoa.GasFloor (stoaMinGasPriceAnu)
 import Chainweb.Pact4.Backend.ChainwebPactDb
 import Data.Coerce
 import Data.Word
@@ -255,8 +258,49 @@ validateParsedChainwebTx logger v cid dbEnv txValidationTime bh tx
       checkChain cid tx
       checkTxSigs logger v cid bh tx
       checkTimes logger v cid bh txValidationTime tx
+      checkGasPrice v cid bh tx
       _ <- checkCompile logger v cid bh tx
       return ()
+
+-- | StoaChain's "Yin engine": from the StoaMinGasPrice fork height a
+-- transaction must pay at least the protocol minimum gas price as of its OWN
+-- creation time -- not the block time, and not "now". Using the transaction's
+-- own field is what makes the rule raceless for clients: they derive gasPrice
+-- from the very value they stamp, and this function is later handed that same
+-- value.
+--
+-- The comparison is done in whole ANU by scaling the gas price UP, never by
+-- dividing the floor DOWN. 'Pact4.assertGasPrice' caps the price at 12 decimal
+-- places, which is exactly ANU granularity, so the scaled value is always
+-- integral and the comparison is exact. Do NOT rewrite this as a division.
+--
+-- This mirrors the Pact5 check in "Chainweb.Pact.PactService.Pact5.ExecBlock"
+-- exactly; the two paths MUST agree or nodes could split. It is unreachable in
+-- practice -- StoaMinGasPrice is ForkNever on every version but stoa, and stoa
+-- has been Pact5 since genesis -- but it is kept in lockstep deliberately.
+--
+checkGasPrice
+  :: ChainwebVersion
+  -> ChainId
+  -> BlockHeight
+  -> Pact4.Transaction
+  -> ExceptT InsertError IO ()
+checkGasPrice v cid bh t
+    | not (enforceStoaMinGasPrice v cid bh) = pure ()
+    | otherwise =
+        unless (gasPriceAnu >= fromIntegral floorAnu) $
+            throwError $ InsertErrorUndersized
+                (GasPrice (Pact4.ParsedDecimal gasPriceDec))
+                (GasPrice (Pact4.ParsedDecimal (Decimal 12 floorAnu)))
+  where
+    pay = Pact4.payloadObj <$> t
+    GasPrice (Pact4.ParsedDecimal gasPriceDec) = view Pact4.cmdGasPrice pay
+    Pact4.TxCreationTime (Pact4.ParsedInteger creationTime) =
+        view Pact4.cmdCreationTime pay
+    gasPriceAnu :: Decimal
+    gasPriceAnu = gasPriceDec * 1000000000000
+    floorAnu :: Integer
+    floorAnu = stoaMinGasPriceAnu creationTime
 
 checkChain
   :: ChainId -> Pact4.Transaction -> ExceptT InsertError IO ()

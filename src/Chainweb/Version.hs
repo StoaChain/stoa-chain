@@ -236,6 +236,10 @@ data Fork
     | Chainweb231Pact
     | Chainweb31
     | Chainweb32
+    -- | StoaChain only: enforce the time-varying protocol minimum gas price
+    -- (the "Yin engine") at consensus. See "Chainweb.Version.Stoa.GasFloor".
+    -- 'ForkNever' on every other version.
+    | StoaMinGasPrice
     -- always add new forks at the end, not in the middle of the constructors.
     deriving stock (Bounded, Generic, Eq, Enum, Ord, Show)
     deriving anyclass (NFData, Hashable)
@@ -277,6 +281,7 @@ instance HasTextRepresentation Fork where
     toText Chainweb231Pact = "chainweb231Pact"
     toText Chainweb31 = "Chainweb31"
     toText Chainweb32 = "Chainweb32"
+    toText StoaMinGasPrice = "stoaMinGasPrice"
 
     fromText "slowEpoch" = return SlowEpoch
     fromText "vuln797Fix" = return Vuln797Fix
@@ -314,6 +319,7 @@ instance HasTextRepresentation Fork where
     fromText "chainweb231Pact" = return Chainweb231Pact
     fromText "Chainweb31" = return Chainweb31
     fromText "Chainweb32" = return Chainweb32
+    fromText "stoaMinGasPrice" = return StoaMinGasPrice
     fromText t = throwM . TextFormatException $ "Unknown Chainweb fork: " <> t
 
 instance ToJSON Fork where

@@ -34,6 +34,7 @@ module Chainweb.Version.Guards
     , pact42
     , enforceKeysetFormats
     , doCheckTxHash
+    , enforceStoaMinGasPrice
     , chainweb213Pact
     , chainweb214Pact
     , chainweb215Pact
@@ -235,6 +236,17 @@ enforceKeysetFormats = checkFork atOrAfter EnforceKeysetFormats
 -- | Should Pact check that the `hash` included with a `Command` is correct?
 doCheckTxHash :: ChainwebVersion -> ChainId -> BlockHeight -> Bool
 doCheckTxHash = checkFork atOrAfter CheckTxHash
+
+-- | StoaChain only: is the time-varying protocol minimum gas price enforced
+-- at consensus?
+--
+-- When this is true, a transaction is rejected unless its gas price is at
+-- least @stoaMinGasPriceAnu@ of its OWN creation time. 'ForkNever' on every
+-- version except @stoa@, so this is always false elsewhere.
+--
+-- 'atOrAfter': the rule applies AT the activation height, not one block later.
+enforceStoaMinGasPrice :: ChainwebVersion -> ChainId -> BlockHeight -> Bool
+enforceStoaMinGasPrice = checkFork atOrAfter StoaMinGasPrice
 
 -- | Fork for musl trans funs
 pact44NewTrans :: ChainwebVersion -> ChainId -> BlockHeight -> Bool

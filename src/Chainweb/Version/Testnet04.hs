@@ -137,6 +137,7 @@ testnet04 = ChainwebVersion
         Chainweb231Pact -> AllChains $ ForkAtBlockHeight $ BlockHeight 5_783_985 -- 2025-10-15 12:00:00+00:00
         Chainweb31 -> AllChains ForkNever
         Chainweb32 -> AllChains ForkNever
+        StoaMinGasPrice -> AllChains ForkNever
         
     , _versionGraphs =
         (to20ChainsTestnet, twentyChainGraph) `Above`
