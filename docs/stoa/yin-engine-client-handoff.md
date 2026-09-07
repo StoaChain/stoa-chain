@@ -34,8 +34,10 @@ and only ever rises. Therefore:
 
 So there is **no feature flag needed for the price computation**. Ship the new
 pricing today; the fork changes nothing for a correctly priced transaction. The
-only cost of switching early is paying the true floor (11,558 ANU today) instead
-of the legacy 10,000 — about 15% more gas, in absolute terms negligible.
+only cost of switching early is paying the true floor instead of the legacy
+10,000 ANU — around 15% more gas as of late 2026, and in absolute terms
+negligible. (The floor moves 8 ANU per day, so do not hard-code a "today" value
+anywhere: compute it.)
 
 This is also why `stoa-xchain-gas` can be wired in as the cross-chain gas payer
 **before** the fork. It is already funded and already carries the live-floor
@@ -266,9 +268,14 @@ a protocol fact. Treat it as unrelated to this document.
 
 ## 8. Keeping three implementations honest
 
-The floor now exists in three places: Haskell (consensus, authoritative), Pact
-(`coin.UC_MinimumGasPriceANU`, the on-chain mirror the gas-station guard reads),
-and your client library. They must agree exactly.
+The floor now exists in **four** places: Haskell (consensus, authoritative),
+Pact (`coin.UC_MinimumGasPriceANU`, the on-chain mirror the gas-station guard
+reads), your client library, and the **StoaChain Explorer**, which computes the
+schedule locally rather than reading it from the chain. They must agree exactly.
+
+That last one is easy to overlook precisely because it is only a display: an
+explorer that quietly drifts does not break a transaction, it misinforms every
+person who trusts the number. Hold it to the same vectors.
 
 This is handled by a **pinning test**, not by hoping. The protocol-side test
 evaluates all three over the §6 vector list and asserts equality. Export your

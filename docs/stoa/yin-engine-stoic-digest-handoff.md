@@ -89,8 +89,19 @@ Concretely:
   transaction that does not.
 - **At block 600,000:** the network itself begins rejecting transactions priced
   below the floor. From then on it is consensus, not convention.
-- **The explorer** now surfaces this — *(writer: describe the specific view,
-  I do not have the details of what was built)*.
+- **The explorer** now surfaces the schedule directly. The dashboard carries a
+  **GAS FLOOR** panel showing the live floor in ANU (11,568 at time of writing),
+  a progress bar through the 990,000-step schedule, and a countdown to the next
+  +1 ANU step. Hovering opens the full schedule: where it is now, when it next
+  moves and to what, the ceiling with its date and the steps remaining, and the
+  rule itself stated plainly — *from 10,000 ANU at 2026-02-23 18:00 UTC, then
+  +1 ANU / 3h*.
+
+  Worth noting for the article, because it is the honest version of the claim:
+  the explorer computes the schedule **locally** and says so on the panel
+  ("no chain read"). It is not reporting a number the chain told it; it is
+  independently computing the same arithmetic and arriving at the same answer.
+  A reader can do the sum themselves and check it.
 
 Two consequences worth spelling out for readers:
 
@@ -135,11 +146,12 @@ Two illustrative costs, useful for grounding the scale:
 Worth a short passage. The credibility of a consensus change is the testing, and
 this one has an unusually concrete story.
 
-- **The floor exists in three independent implementations** — the node (Haskell),
-  the on-chain `coin` contract (Pact), and the client libraries. All three must
-  agree exactly; if two nodes computed different floors the chain would split. A
-  *pinning test* runs the same nine timestamps through the node and the on-chain
-  contract and asserts identical answers.
+- **The floor exists in four independent implementations** — the node (Haskell),
+  the on-chain `coin` contract (Pact), the client libraries, and the explorer.
+  All four must agree exactly; if two nodes computed different floors the chain
+  would split, and an explorer that drifted would quietly misinform everyone
+  reading it. A *pinning test* runs the same nine timestamps through the node and
+  the on-chain contract and asserts identical answers.
 - **The whole chain was replayed.** Every block StoaChain has ever produced —
   550,567 blocks across 10 chains — was re-executed under the new software to
   confirm it agrees with all existing history. The fork changes nothing that has
@@ -211,7 +223,6 @@ deciding anything.**
 ## 8. Open items for the writer
 
 - Confirm the formal definition of **Yang** (§1).
-- Describe the **explorer change** (§3) — I do not have its details.
 - Recompute the **current floor** at publication time (§4).
 - Decide whether to publish the activation **date** alongside the block height.
   600,000 is roughly 2026-09-25, but block heights drift; a date will be
