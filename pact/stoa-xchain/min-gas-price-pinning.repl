@@ -1,0 +1,142 @@
+;; -----------------------------------------------------------------------------
+;; VERSION-CONTROLLED COPY.
+;;
+;; This file cannot run from here: it (load "init.repl")s the OuroNet sandbox
+;; harness, which lives outside this repository and has no VCS of its own. This
+;; copy exists so the vector list is under version control alongside the Haskell
+;; that must agree with it.
+;;
+;; To run it (needs pact 5.4.1 -- see the AncientIntel build box):
+;;
+;;   cp pact/stoa-xchain/min-gas-price-pinning.repl ;;      <OuroNet>/00_StoaSandbox/stoa-env/
+;;   cd <OuroNet>/00_StoaSandbox/stoa-env && pact min-gas-price-pinning.repl
+;;
+;; Last run 2026-09-07 against pact 5.4.1: PASS (exit 0), and verified
+;; falsifiable -- perturbing one expected value by 1 ANU produces
+;; "FAILURE: ... expected: 11559, received: 11558" and exit 1.
+;; -----------------------------------------------------------------------------
+
+;; min-gas-price-pinning.repl
+;;
+;; PINNING TEST for the Yin engine minimum gas price.
+;;
+;; The floor now exists in three implementations that MUST agree exactly:
+;;
+;;   1. Haskell  -- Chainweb.Version.Stoa.GasFloor.stoaMinGasPriceAnu
+;;                  (chainweb: src/Chainweb/Version/Stoa/GasFloor.hs)
+;;                  AUTHORITATIVE for consensus from the StoaMinGasPrice fork.
+;;   2. Pact     -- coin.UC_MinimumGasPriceANU   <-- what THIS file tests
+;;                  The on-chain mirror. The cross-chain gas-station guards read
+;;                  it, and clients dirty-read it for display.
+;;   3. Clients  -- Ouronet UI / Stoa Wallet, per
+;;                  docs/stoa/yin-engine-client-handoff.md
+;;
+;; A node computing a different floor than its peers is a chain split, so this
+;; is not a nicety. The vector list below is the CONTRACT. It is byte-for-byte
+;; the same list as:
+;;   - chainweb test/unit/Chainweb/Test/Stoa/GasFloor.hs  (`vectors`)
+;;   - the handoff doc, section 6
+;;
+;; IF A ROW HERE FAILS, AN IMPLEMENTATION HAS DRIFTED. Fix the implementation,
+;; never the expected value. In particular a failure in the cap rows means the
+;; deployed coin module has not been upgraded to MAX-GAS-PRICE 1000000 yet.
+;;
+;; Run:
+;;   cd 00_StoaSandbox/stoa-env
+;;   pact min-gas-price-pinning.repl
+;; Expect: "Load successful" and exit 0.
+;;
+;; NOTE ON THE TIME INPUT. Pact reads (at "block-time" (chain-data)) while the
+;; Haskell side is handed the transaction's own creationTime. That difference is
+;; deliberate -- same pure function, different time source -- so this test feeds
+;; both the SAME instants and asserts the function agrees. It does not, and
+;; cannot, test which time source consensus uses.
+;; -----------------------------------------------------------------------------
+
+(load "init.repl")
+
+(print "")
+(print "================ MIN GAS PRICE PINNING TEST ==============================")
+
+;; --- helper: assert the floor at a given block-time -------------------------
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-02-23T18:00:00Z") })
+(expect "genesis exactly -> 10000 ANU"
+    10000 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-02-23T18:00:01Z") })
+(expect "genesis + 1s -> 10000 ANU"
+    10000 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-02-23T20:59:59Z") })
+(expect "last second of tick 0 -> 10000 ANU"
+    10000 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-02-23T21:00:00Z") })
+(expect "first second of tick 1 -> 10001 ANU  (the off-by-one row)"
+    10001 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-09-06T12:00:00Z") })
+(expect "2026-09-06T12:00:00Z -> 11558 ANU"
+    11558 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2364-12-18T18:00:00Z") })
+(expect "cap reached -> 1000000 ANU  (fails if MAX-GAS-PRICE is still 400000)"
+    1000000 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2413-08-23T00:53:20Z") })
+(expect "well past the cap -> 1000000 ANU"
+    1000000 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+;; --- pre-genesis: NO lower clamp -------------------------------------------
+;; Pact clamps only the UPPER bound, so these fall BELOW the genesis minimum.
+;; Semantically odd, deliberately preserved, and matched exactly by Haskell's
+;; `div` (which truncates toward negative infinity, like Pact's `floor`).
+;; Unreachable in production -- assertTxTimeRelativeToParent bounds creationTime
+;; to within its TTL of the parent block -- but pinned so the three
+;; implementations cannot silently diverge on rounding.
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-02-23T17:59:59Z") })
+(expect "1s BEFORE genesis -> 9999 ANU  (no lower clamp; floor, not trunc)"
+    9999 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-02-23T14:59:59Z") })
+(expect "10801s before genesis -> 9998 ANU"
+    9998 (coin.UC_MinimumGasPriceANU))
+(commit-tx)
+
+;; --- the four constants themselves ------------------------------------------
+(begin-tx)
+(expect "GENESIS-TIME"          (time "2026-02-23T18:00:00Z") coin.GENESIS-TIME)
+(expect "GENESIS-MIN-GAS-PRICE" 10000                         coin.GENESIS-MIN-GAS-PRICE)
+(expect "MAX-GAS-PRICE"         1000000                       coin.MAX-GAS-PRICE)
+(expect "GAS-PRICE-INTERVAL"    10800.0                       coin.GAS-PRICE-INTERVAL)
+(commit-tx)
+
+;; --- the STOA helper must be the ANU value scaled by 1e12 -------------------
+(begin-tx)
+(env-chain-data { "block-time": (time "2026-09-06T12:00:00Z") })
+(expect "UC_MinimumGasPriceSTOA agrees with the ANU value"
+    0.000000011558 (coin.UC_MinimumGasPriceSTOA))
+(commit-tx)
+
+(print "================ END OF PINNING VECTORS ==================================")
+(print "  pact `expect` RECORDS failures and keeps going, so this banner prints")
+(print "  either way. The authority is the EXIT CODE (0 = pass) and any FAILURE")
+(print "  lines above -- do not read this message as success.")
+(print "")

@@ -294,6 +294,11 @@ cpmTestVersion g v = v
 slowForks :: HashMap Fork (ChainMap ForkHeight)
 slowForks = tabulateHashMap \case
     SlowEpoch -> AllChains ForkAtGenesis
+    -- StoaChain-only consensus fork. Off by default in test versions so it
+    -- cannot perturb gas expectations in unrelated tests; the dedicated
+    -- fork test overrides it explicitly, e.g.
+    --   fastForks & at StoaMinGasPrice ?~ AllChains (ForkAtBlockHeight 20)
+    StoaMinGasPrice -> AllChains ForkNever
     OldTargetGuard -> AllChains ForkAtGenesis
     SkipFeatureFlagValidation -> AllChains ForkAtGenesis
     OldDAGuard -> AllChains ForkAtGenesis
@@ -335,6 +340,11 @@ slowForks = tabulateHashMap \case
 fastForks :: HashMap Fork (ChainMap ForkHeight)
 fastForks = tabulateHashMap $ \case
     SlowEpoch -> AllChains ForkAtGenesis
+    -- StoaChain-only consensus fork. Off by default in test versions so it
+    -- cannot perturb gas expectations in unrelated tests; the dedicated
+    -- fork test overrides it explicitly, e.g.
+    --   fastForks & at StoaMinGasPrice ?~ AllChains (ForkAtBlockHeight 20)
+    StoaMinGasPrice -> AllChains ForkNever
     OldTargetGuard -> AllChains ForkAtGenesis
     SkipFeatureFlagValidation -> AllChains ForkAtGenesis
     OldDAGuard -> AllChains ForkAtGenesis

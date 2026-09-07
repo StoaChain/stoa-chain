@@ -672,6 +672,7 @@ test-suite chainweb-tests
         Chainweb.Test.Roundtrips
         Chainweb.Test.SPV
         Chainweb.Test.SPV.EventProof
+        Chainweb.Test.Stoa.GasFloor
         Chainweb.Test.Sync.WebBlockHeaderStore
         Chainweb.Test.TreeDB
         Chainweb.Test.TreeDB.RemoteDB
