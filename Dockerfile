@@ -246,6 +246,25 @@ RUN --mount=type=cache,target=/root/.cabal,id=${TARGETPLATFORM} \
 EOF
 
 # ############################################################################ #
+# Build the compaction tool (StoaChain)
+#
+# Deliberately a separate stage from chainweb-build-cwtool: shipping `compact`
+# should not drag in the ea run and its genesis-consistency check, which are
+# unrelated to it and much slower.
+
+FROM chainweb-build-lib AS chainweb-build-compact
+ARG TARGETPLATFORM
+ARG PROJECT_NAME
+RUN --mount=type=cache,target=/root/.cabal,id=${TARGETPLATFORM} \
+    --mount=type=cache,target=./dist-newstyle,id=${PROJECT_NAME}-${TARGETPLATFORM},sharing=locked \
+    cabal build --enable-tests --enable-benchmarks cwtools:exe:compact
+RUN --mount=type=cache,target=/root/.cabal,id=${TARGETPLATFORM} \
+    --mount=type=cache,target=./dist-newstyle,id=${PROJECT_NAME}-${TARGETPLATFORM},sharing=locked <<EOF
+    mkdir -p artifacts
+    cp $(cabal list-bin --enable-tests --enable-benchmarks cwtools:exe:compact) artifacts/
+EOF
+
+# ############################################################################ #
 # Build benchmarks
 
 FROM chainweb-build-lib AS chainweb-build-bench
@@ -347,6 +366,41 @@ COPY --from=chainweb-build-cwtool /chainweb/artifacts/ea .
 COPY --from=chainweb-build-tests /chainweb/artifacts/chainweb-tests .
 COPY --from=chainweb-build-tests /chainweb/test/pact test/pact
 COPY --from=chainweb-build-tests /chainweb/pact pact
+
+# ############################################################################ #
+# StoaChain State Cache compaction tool
+#
+# Published as ghcr.io/stoachain/stoa-compact, built and tagged alongside
+# stoa-node from the same commit. It runs as a one-off container against a
+# SNAPSHOT of a node's data directory -- never the live directory, and never
+# inside the node container:
+#
+#   docker run --rm \
+#     -v <snapshot>:/from \         # NOT :ro -- SQLite is opened read-write
+#     -v <out-parent>:/out \        # mount the PARENT; --to must not exist
+#     -v <logs>:/logs \
+#     ghcr.io/stoachain/stoa-compact:<tag> \
+#       --chainweb-version stoa --from /from --to /out/compacted \
+#       --log-dir /logs --parallel
+#
+# Never pass --compact-rocksdb. It drops old payloads, which permanently
+# destroys SPV proof construction for those heights and strands any cross-chain
+# transfer that started there. Pact-only compaction is the default and is the
+# only mode the fleet should ever run.
+
+FROM chainweb-runtime AS stoa-compact
+ENV PATH=/chainweb:$PATH
+COPY --from=chainweb-build-compact /chainweb/artifacts/compact .
+COPY --from=chainweb-build-compact /chainweb/LICENSE .
+ARG STOA_VERSION=dev
+ARG STOA_REVISION=unknown
+LABEL org.opencontainers.image.title="StoaChain compaction tool"
+LABEL org.opencontainers.image.description="cwtools compact, built for the StoaChain (stoa) network"
+LABEL org.opencontainers.image.source="https://github.com/StoaChain/stoa-chain"
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
+LABEL org.opencontainers.image.version="${STOA_VERSION}"
+LABEL org.opencontainers.image.revision="${STOA_REVISION}"
+ENTRYPOINT ["/chainweb/compact"]
 
 # ############################################################################ #
 # Tested Chainweb-node Application

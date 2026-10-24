@@ -85,6 +85,7 @@ import Chainweb.Version (ChainId, ChainwebVersion(..), chainIdToText)
 import Chainweb.Version.Guards (minimumBlockHeaderHistory)
 import Chainweb.Version.Mainnet (mainnet)
 import Chainweb.Version.Registry (lookupVersionByName)
+import Chainweb.Version.Stoa (stoa)
 import Chainweb.Version.Testnet04 (testnet04)
 import Chainweb.WebBlockHeaderDB (getWebBlockHeaderDb, initWebBlockHeaderDb)
 import Data.LogMessage (SomeLogMessage, logText)
@@ -633,11 +634,19 @@ getVersionedTableMutationRowsAt logger db target = do
 
 -- | Locate the latest "safe" target blockheight for compaction.
 --
---   In mainnet/testnet, this is determined
+--   In mainnet/testnet/stoa, this is determined
 --   to be the @mininum (map latestBlockHeight chains) - 1000@.
 --
 --   In devnet, this is just the latest common blockheight
 --   (or @minimum (map latestBlockHeight chains)@).
+--
+--   The margin is not cosmetic. 'doCompactPactState' writes a single
+--   'BlockHistory' row, at the target, so a node restarted on a compacted
+--   database has no undo log at all until it executes forward again. The
+--   margin is what it replays on startup, and therefore the rewind depth it
+--   arrives at the tip with. 1000 matches 'initialRewindLimit'; a larger value
+--   buys nothing, because the node refuses to rewind past its reorg limit
+--   regardless of what the database holds.
 locateLatestSafeTarget :: (Logger logger)
   => logger
   -> ChainwebVersion
@@ -656,9 +665,14 @@ locateLatestSafeTarget logger v dbDir cids = do
 
   -- Make sure we have at least 1k blocks of depth for prod.
   -- In devnet or testing versions we don't care.
+  --
+  -- StoaChain is a production network and must be listed here explicitly.
+  -- Upstream enumerates only its own two production versions, so without this
+  -- 'stoa' falls through to the devnet default of 0 and compaction targets the
+  -- tip exactly, leaving a restarted node with no rewind depth whatsoever.
   let safeDepth :: BlockHeight
       safeDepth
-        | v == mainnet || v == testnet04 = BlockHeight 1_000
+        | v == mainnet || v == testnet04 || v == stoa = BlockHeight 1_000
         | otherwise = BlockHeight 0
 
   when (latestCommon - earliestCommon < safeDepth) $ do
