@@ -43,6 +43,13 @@ decades away at current usage. There is **no urgency** on the Arweave
 engineering. There is a good case for running compaction now, and for piloting
 the upload while the dataset costs lunch money.
 
+**For the node fleet there is a separate and immediate conclusion.** Section 6
+is addressed to the AncientHoldings Hub: its single “blockchain size” figure
+conflates the two stores and so roughly doubles the apparent size of the chain,
+its backups capture a cache that never needed backing up, and a compaction
+worker would halve both. None of that waits on Arweave or on any change to
+chainweb.
+
 ---
 
 ## 1. How a chainweb node stores data
@@ -60,23 +67,51 @@ Measured on a production StoaChain node, 2026-10-22:
 | | size | share |
 |---|---|---|
 | `data/0/` total | **9.3 GB** | 100% |
-| `data/0/rocksDb` — "**Half A**" | **4.6 GB** | 49% |
-| `data/0/sqlite` — "**Half B**" | **4.7 GB** | 51% |
+| `data/0/rocksDb` — the **Chain Archive** | **4.6 GB** | 49% |
+| `data/0/sqlite` — the **State Cache** | **4.7 GB** | 51% |
 
-and within Half B, one file per chain:
+and within the State Cache, one file per chain:
 
 | file | size |
 |---|---|
 | `pact-v1-chain-0.sqlite` | 1.15 GB |
 | `pact-v1-chain-1..9.sqlite` | ~424 MB each |
 
-Chain 0 is roughly double the others because the coin contract, the namespaces
-and the gas stations all live there.
+**Chain 0 is bigger because OuroNet runs on it.** Not because of the coin
+contract, the namespaces or the gas stations — those are deployed on *every*
+chain and cost the same everywhere. Chain 0 carries essentially all of the
+network's activity. From the explorer at block 684,994:
+
+| | chain 0 | each of chains 1–9 | chain 0's share |
+|---|---|---|---|
+| gas used | 666,205,533 | ~625,000 | **99.2%** of 671,828,226 |
+| gas wasted | 9,832,264 | 0 | **100%** |
+| fees paid | 7.045480 STOA | ~0.0076 STOA | ~925× |
+| STOA held | 19,517,673 | ~13,850 | **99.4%** of supply |
+
+and in the Pact state itself, comparing the two files:
+
+| | chain 0 | chain 1 |
+|---|---|---|
+| file size | 993 MB | 369 MB |
+| tables | **243** | 16 |
+| OuroNet tables | **227**, holding 118,419 rows | **0** |
+| `coin_coin-table` rows | 1,246,355 (≈ 2× per block) | 621,613 (≈ 1× per block) |
+| `TransactionIndex` rows | 3,756 | **165** |
+
+Two things follow. Chain 0 carries 227 OuroNet tables that simply do not exist
+elsewhere, and its coin table accumulates about two rows per block — the miner
+reward plus a gas payer — where the idle chains accumulate exactly one.
+
+Note what chain 1 looks like all the same: **165 transactions in its entire
+history, and 369 MB of SQLite.** Over three million rows of pure
+miner-reward and supply bookkeeping on a chain nobody uses. That is the clearest
+possible illustration of what the second half of this database actually is.
 
 The 50/50 split is stable, not a coincidence: between the 2026-10-02 snapshot
 (4.1 + 4.1 GB) and today (4.7 + 4.7 GB) both halves grew by the same 0.6 GB.
 
-### 1.1 Half A — RocksDB — the block history
+### 1.1 The Chain Archive — RocksDB — the block history
 
 Contents: block headers, cut hashes, block payloads, block transactions, block
 outputs, and the P2P peer database.
@@ -111,7 +146,7 @@ tables above use plain `encodeBlockHeight`, which is **little-endian**
 Changing that encoding would be a database format change requiring a full
 resync, so we live with it.
 
-### 1.2 Half B — Pact SQLite — the world state and its row history
+### 1.2 The State Cache — Pact SQLite — the world state and its row history
 
 One file per chain. The schema that matters is the per-user-table one
 ([`Compaction.hs:577`](../../src/Chainweb/Pact/Backend/Compaction.hs#L577)):
@@ -158,18 +193,18 @@ plus the ouronet tables: single-digit MB.
 
 ## 2. Why the asymmetry decides everything
 
-### 2.1 Half A is primary data; Half B is derived
+### 2.1 The Chain Archive is primary data; the State Cache is derived
 
-Half B is a **materialised cache of the result of executing Half A**. Replaying
-Half A regenerates it exactly.
+The State Cache is a **materialised view of the result of executing the Chain
+Archive**. Replaying the Chain Archive regenerates it exactly.
 
 This is not theory for us: the Yin engine verification replayed **all 550,567
 blocks × 10 chains** read-only on real Stoa data. That run *was* the
-reconstruction of Half B from Half A, end to end.
+reconstruction of the State Cache from the Chain Archive, end to end.
 
-So the only question about Half B is how much of the cache must stay warm.
+So the only question about the State Cache is how much of the cache must stay warm.
 
-### 2.2 Half A is hash-committed; Half B is not
+### 2.2 The Chain Archive is hash-committed; the State Cache is not
 
 The complete `BlockHeader`
 ([`src/Chainweb/BlockHeader/Internal.hs:298`](../../src/Chainweb/BlockHeader/Internal.hs#L298)):
@@ -192,15 +227,15 @@ chainweb commits only the *payload*. Therefore:
 | **a Pact state row** | **nothing** | ❌ |
 
 The only way to establish that a Pact state row is correct is to re-execute the
-transactions that produced it. **This is the single reason Half A can have a
-trustless remote tier and Half B cannot.**
+transactions that produced it. **This is the single reason the Chain Archive can have a
+trustless remote tier and the State Cache cannot.**
 
 A second, independent reason: the access pattern. Arweave answers *"give me the
 blob at this address."* A Pact read asks *"give me the newest version of rowkey
 `k:abc…` with `txid <= T`."* Serving that remotely needs a local index over every
 rowkey in history — rebuilding the database in order to avoid storing it.
 
-### 2.3 Half B's history is an undo log, not an archive
+### 2.3 The State Cache's history is an undo log, not an archive
 
 This is why the history exists at all. Rewind is implemented as
 ([`Pact/Backend/Utils.hs:479`](../../src/Chainweb/Pact/Backend/Utils.hs#L479)):
@@ -214,7 +249,7 @@ stores no separate "previous value" anywhere — the old versions **are** the un
 mechanism. Keep enough versions to cover the deepest rewind you intend to
 perform cheaply; everything older is dead weight nothing will ever read.
 
-### 2.4 How little of Half B a node actually needs
+### 2.4 How little of the State Cache a node actually needs
 
 | consumer | what it needs | how much |
 |---|---|---|
@@ -230,13 +265,28 @@ perform cheaply; everything older is dead weight nothing will ever read.
 Only the two "unbounded" rows are genuinely lost by compacting, and neither is
 needed for consensus or for current-state queries.
 
-**Block explorers are not a constraint.** They build their own index by streaming
-blocks (Half A) and show current balances from latest state; they do not ask a
-node for historical Pact rows. The one dependency worth confirming on ours is
-whether it calls `/poll` for old transaction results — and compaction leaves
-`TransactionIndex` intact by default precisely for that.
+**Block explorers need none of it — they can run off the Chain Archive alone.** An explorer
+builds its own index by streaming blocks: transactions come from the payloads,
+results and events come from the outputs, and both are in the Chain Archive. Even current
+balances are derivable there, by folding the `TRANSFER` events from genesis
+forward — which is how most chain explorers compute balances anyway. So an
+explorer never needs a Pact *history* row, and if it derives balances from events
+it does not need the State Cache at all.
 
-### 2.5 Upstream already agrees about Half B
+The only thing that pulls an explorer toward the State Cache is convenience: asking a node
+`/local` for a balance instead of deriving it, or `/poll` for an old
+transaction's result. The first reads the State Cache's *current* state, not its history,
+so compaction does not affect it. The second reads `TransactionIndex`, which
+compaction preserves by default precisely for that reason. Either way, nothing
+an explorer does requires retained history.
+
+**Which generalises.** Nobody needs the State Cache's history — not nodes, not explorers,
+not wallets. What everybody does need is the State Cache's *tip*: a node cannot validate a
+transfer without knowing the current balance. So the State Cache is not eliminable, only
+its history is, and even the tip is reconstructible from the Chain Archive by replay. The Chain
+Archive is the blockchain; everything else is a derived convenience.
+
+### 2.5 Upstream already agrees about the State Cache
 
 The compaction tool's default is `compactThese = CompactOnlyPactState`; the
 opt-*out* flag `--no-compact-pact` is documented as:
@@ -244,7 +294,7 @@ opt-*out* flag `--no-compact-pact` is documented as:
 > Pact state is not used by any public interface, so it is compacted by default,
 > and the space savings are usually large on mainnet.
 
-Compacting Half B is the intended steady state, not an exotic optimisation. We
+Compacting the State Cache is the intended steady state, not an exotic optimisation. We
 have simply never run it.
 
 ---
@@ -341,7 +391,7 @@ a whole new backup.
 
 | component | fate | rough size |
 |---|---|---|
-| Pact SQLite (Half B) | **compacted locally** — no Arweave involved | GB → MB |
+| Pact SQLite (State Cache) | **compacted locally** — no Arweave involved | GB → MB |
 | RocksDB block headers | **always local** — small, needed constantly for cut validation, mandatory for SPV | grows slowly |
 | RocksDB payloads / transactions / outputs below a cutoff height | **Arweave** | the bulk |
 | hot payload cache | local, bounded, operator-sized | operator's choice |
@@ -421,7 +471,151 @@ Scope of the wiring: the three bulk payload tables plus the
 
 ---
 
-## 6. The roadmap
+## 6. What this means for the AncientHoldings Hub
+
+This section is addressed to the agent that maintains the StoaChain node fleet.
+It needs no Arweave work and no chainweb changes — it is actionable today, and it
+is where most of the practical benefit in this document actually lands.
+
+### 6.1 The names to use
+
+"Chain Archive" and "State Cache" are this paper's scaffolding. The fleet tooling should use
+real names, because the two are not two halves of one thing — they are different
+kinds of object:
+
+| directory | **name** | what it is | property |
+|---|---|---|---|
+| `data/0/rocksDb` | **Chain Archive** | headers, payloads, transactions, outputs | canonical, immutable, hash-committed, **irreplaceable** |
+| `data/0/sqlite` | **State Cache** | Pact world state + its row history | derived, disposable, **regenerable by replay** |
+
+The names carry the operational rule by themselves: you back up an archive, and
+you evict a cache.
+
+### 6.2 What the Hub shows today, and why it is wrong
+
+The dashboard reports a single **"blockchain size"** of 9.3 GB. That number
+treats two unlike things as one, and overstates the chain by roughly double.
+4.6 GB of it is the blockchain. The other 4.7 GB is a per-node scratch file that
+is ~99% stale row versions and that any node can rebuild from the first 4.6 GB.
+
+It is also not a network property. The Chain Archive is the same on every synced
+node; the State Cache is whatever that particular node has accumulated since it
+was last compacted, so it differs per node and means nothing as a fleet total.
+
+### 6.3 What to display instead
+
+Break the single figure into two, and treat them differently:
+
+```
+Blockchain            4.6 GB            Chain Archive · identical on every synced node
+State cache     avg   4.7 GB / node     derived · disposable · compactable
+                max   5.1 GB  (slave-003)
+                due for compaction: 3 nodes
+```
+
+- **Blockchain** = Chain Archive size. One figure for the network. This is the
+  number that answers "how big is StoaChain?"
+- **State cache** = the mean across the fleet, plus the max and the count of
+  nodes over the compaction threshold. Per-node, not summed — summing a cache
+  across nodes produces a number that describes nothing.
+- Anywhere the Hub currently shows per-node disk, show both components, so an
+  operator can see at a glance whether a node is large because the chain grew or
+  because its cache is overdue.
+
+### 6.4 The compaction worker to build
+
+**Trigger:** a node's `data/0/sqlite` exceeding **1 GB**.
+
+At the measured growth of ~30 MB/day for the Pact side, a freshly compacted node
+takes roughly a month to come back to 1 GB, so this lands at a monthly cadence
+per node without needing a schedule.
+
+**The command:**
+
+```bash
+cwtools compact --chainweb-version stoa \
+  --from <snapshot-dir> --to <compacted-dir> \
+  --log-dir <logs> --parallel
+```
+
+> ### ⚠ Never pass `--compact-rocksdb` for routine compaction or backups
+>
+> Without it, `compact` touches **only** the State Cache and leaves the Chain
+> Archive completely untouched — which is exactly what is wanted. With it, the
+> tool also drops old payloads from the Chain Archive, which permanently
+> destroys the ability to construct SPV proofs for those heights and **strands
+> any cross-chain transfer that started there** (§3). That flag is only for
+> deliberately building a lean node, and at least one node in the fleet must
+> never have it applied.
+
+**Two operational details that are easy to get wrong:**
+
+1. **Compaction reads a snapshot, not a live directory.** It opens its source
+   read-only, and a live node writing to RocksDB and SQLite concurrently gives a
+   torn view across the two. Use the Hub's existing backup/snapshot step as the
+   source, or stop the node first.
+2. **A Pact-only compaction emits only `<to>/0/sqlite`.** The tool creates the
+   RocksDB output directory only when `--compact-rocksdb` is passed. So to
+   assemble a complete, runnable node directory the worker must place the
+   original `0/rocksDb` next to the compacted `0/sqlite`:
+
+   ```
+   <compacted-dir>/0/sqlite     <- from compact
+   <compacted-dir>/0/rocksDb    <- copied or hard-linked from the snapshot
+   ```
+
+**Swap-in:** stop the node, replace `data/0/sqlite` with the compacted one,
+start it. Downtime is the restart, not the compaction.
+
+**Expected result:** the State Cache should fall from GB to **tens of MB**. The
+live state is small — chain 0 holds 48 coin accounts plus the OuroNet tables, and
+chain 1 has had 165 transactions in its entire history. This figure is predicted,
+not yet measured; the first run confirms it.
+
+### 6.5 The backup mechanism should compact first
+
+Today a backup captures all 9.3 GB, on the assumption that all of it is the
+blockchain. Half of it is a rebuildable cache, and backing it up is pure waste —
+the restored node would have been equally correct with a one-line cache.
+
+**New order of operations:**
+
+1. Snapshot the node (as now).
+2. Compact the snapshot's Pact state — **without** `--compact-rocksdb`.
+3. Assemble `0/rocksDb` (from the snapshot, untouched) + `0/sqlite` (compacted).
+4. Archive that.
+
+**Result: roughly 9.3 GB → ~4.7 GB**, and the saving grows every month the cache
+would otherwise have accumulated.
+
+**Yes, it still kickstarts a node from zero.** The backup keeps the complete
+Chain Archive and a current, valid Pact state, so a node started on it validates
+from the tip immediately, serves every historical block and header to peers, and
+can construct SPV proofs at any height. Three things it cannot do, none of which
+the fleet needs: answer historical state queries ("balance of X at height Y"),
+rewind further back than the retained cache depth, or prove its own history
+without replaying the archive.
+
+### 6.6 The one fleet-wide rule
+
+**At least one node — the bootstrap — must keep everything.** If every node were
+compacted aggressively and the Chain Archive were later offloaded to Arweave,
+the network would have no local ground truth left: no node able to serve a
+genesis-up sync, and the archive and the backups would share a single point of
+failure. Designate one archival node, exempt it from the compaction worker, and
+keep its backups full.
+
+### 6.7 Summary for the Hub agent
+
+| # | change | effort |
+|---|---|---|
+| 1 | Rename the concepts: **Chain Archive** and **State Cache** | labels only |
+| 2 | Split "blockchain size" into Chain Archive (network figure) and State Cache (per-node mean, max, count over threshold) | display |
+| 3 | Build a compaction worker triggered at 1 GB of `0/sqlite`, assembling archive + compacted cache | the main build |
+| 4 | Change backup to compact first; expect ~9.3 GB → ~4.7 GB | small |
+| 5 | Never pass `--compact-rocksdb`; exempt the bootstrap node from compaction | a guard rail |
+
+## 7. The roadmap
 
 ### Phase 0 — measure (half a day, no code)
 
@@ -433,7 +627,7 @@ cabal run compact -- --chainweb-version stoa \
   --log-dir /scratch/logs --compact-rocksdb --parallel
 ```
 
-§1.2 already predicts the answer for Half B; this confirms it end-to-end and
+§1.2 already predicts the answer for the State Cache; this confirms it end-to-end and
 tells us what a compacted node actually weighs. **Highest value per hour of any
 step in this document.**
 
@@ -473,9 +667,9 @@ fast full archive.
 
 ---
 
-## 7. Blockers, risks and open decisions
+## 8. Blockers, risks and open decisions
 
-### 7.1 Concrete blockers in the code
+### 8.1 Concrete blockers in the code
 
 **A RocksDB-only export cannot run today.** `compact` calls
 `locateLatestSafeTarget` *unconditionally* before branching on what was
@@ -498,7 +692,7 @@ payloads. Acceptable; just not free.
 **The target RocksDB is opened `NoCompression`** — right for a database you are
 about to run, wasteful for bytes you are about to pay to store forever.
 
-### 7.2 Risks
+### 8.2 Risks
 
 **Latency and a new failure mode.** `tableLookup` is synchronous `IO`; today a
 RocksDB read in microseconds, with a remote tier a gateway round trip of
@@ -533,11 +727,11 @@ building twice.
 queries and the ability to rewind past its compaction point, so it must retain
 more than the deepest plausible reorg and be re-run as history re-accumulates.
 
-**Two independent backstops.** If Half A goes to Arweave *and* Half B is
+**Two independent backstops.** If the Chain Archive goes to Arweave *and* the State Cache is
 compacted, the "rebuild a node from nothing" path runs through Arweave. Keep one
 full local archive as well so the two backstops do not share a failure.
 
-### 7.3 Open decisions
+### 8.3 Open decisions
 
 | # | decision | recommendation |
 |---|---|---|
@@ -549,7 +743,7 @@ full local archive as well so the two backstops do not share a failure.
 
 ---
 
-## 8. What was verified versus what is assumed
+## 9. What was verified versus what is assumed
 
 Being explicit, because the plan rests on these.
 
@@ -564,13 +758,17 @@ and its defaults; `doCompactRocksDb`'s structure and its one-sided filter; the
 a RocksDB checkpoint plus SQLite copy; the `ReadableTable` interface and its
 existing alternative backends; the existence of
 `encodePayloadWithOutputs`/`decodePayloadWithOutputs`; growth of 8.2 → 9.4 GB
-over 20 days; PR #49's scope from its own description.
+over 20 days; the chain-0 against chain-1 Pact-state comparison (243 vs 16
+tables, 227 OuroNet tables vs none, 1,246,355 vs 621,613 coin rows, 3,756 vs
+165 indexed transactions); the per-chain activity figures read from the
+explorer at block 684,994; PR #49's scope from its own description.
 
 **Assumed, and worth confirming:** Arweave per-GB pricing (no authoritative 2026
 source found — price it at upload time); that ar.io range reads perform
 acceptably at our access patterns (untested by us); that a compacted node
-database boots and serves correctly (Phase 0 / Phase 1 test); that our explorer
-does not depend on historical Pact state (needs a look at what it calls); that
+database boots and serves correctly (Phase 0 / Phase 1 test); that our own explorer
+does not call `/local` or `/poll` against history (§2.4 shows an explorer *can*
+run off the Chain Archive alone; whether ours does is unchecked); that
 ~1,000 blocks of Pact history is genuinely sufficient for our reorg depth in
 practice, not just per the configured limit.
 
@@ -579,7 +777,7 @@ run.
 
 ---
 
-## 9. Code reference index
+## 10. Code reference index
 
 | subject | location |
 |---|---|
@@ -603,19 +801,23 @@ run.
 
 ---
 
-## 10. Recommendation
+## 11. Recommendation
 
 1. **Run Phase 0 this week.** Half a day, and it is the only number that sizes
    everything else.
-2. **Compact Half B regardless of the Arweave decision.** It is ~99% redundant,
-   upstream's tool compacts it by default, and nothing any user, explorer or
-   consensus rule can observe changes.
-3. **Build Phases 1–2 regardless.** They fix the backup problem on their own
+2. **Hand §6 to the Hub agent.** The display split, the compaction worker and
+   the compact-before-backup change need no Arweave work and no chainweb
+   change, and together they roughly halve both the reported size and every
+   backup. This is the fastest return in the document.
+3. **Compact the State Cache regardless of the Arweave decision.** It is ~99%
+   redundant, upstream's tool compacts it by default, and nothing any user,
+   explorer or consensus rule can observe changes.
+4. **Build Phases 1–2 regardless.** They fix the backup problem on their own
    merits and carry zero consensus risk.
-4. **Pilot the Arweave upload now**, at 9.4 GB, so the plumbing is proven before
+5. **Pilot the Arweave upload now**, at 9.4 GB, so the plumbing is proven before
    the data is large.
-5. **Hold Phase 3 until the PR #49 question is settled.**
-6. **Keep `GcNone` and the unlimited SPV window.** Do not take #49's pruning
+6. **Hold Phase 3 until the PR #49 question is settled.**
+7. **Keep `GcNone` and the unlimited SPV window.** Do not take #49's pruning
    without an archive already standing behind it.
 
 The idea is sound, the trust model is genuinely good, it needs no fork, and it is
