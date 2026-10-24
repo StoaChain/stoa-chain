@@ -572,6 +572,35 @@ live state is small — chain 0 holds 48 coin accounts plus the OuroNet tables, 
 chain 1 has had 165 transactions in its entire history. This figure is predicted,
 not yet measured; the first run confirms it.
 
+> ### ⚠ On Stoa, compaction targets the tip with no safety margin
+>
+> `locateLatestSafeTarget` grants a 1,000-block margin to `mainnet` and
+> `testnet04` and **zero to every other version, Stoa included**:
+>
+> ```haskell
+> let safeDepth
+>       | v == mainnet || v == testnet04 = BlockHeight 1_000
+>       | otherwise = BlockHeight 0
+> let target = latestCommon - safeDepth
+> ```
+>
+> So the compaction target is the snapshot's latest common height exactly, and
+> `doCompactPactState` writes a single `BlockHistory` row at that height. A
+> freshly compacted Stoa node therefore has Pact state at one height and **no
+> rewind capability at all** until it executes forward again. The same zero also
+> disables the tool's "not enough history to safely compact" guard, which
+> compares against it — so the tool will never refuse, and that is the absence
+> of a check rather than evidence of safety.
+>
+> It is survivable because the node restarts behind the live tip and rebuilds
+> undo history while it catches up — but that margin is whatever the pipeline's
+> latency happens to be, not a designed buffer. **Operationally:** never compact
+> a snapshot taken seconds earlier, and do not call a node healthy until it has
+> reached the tip and `BlockHistory` has grown past ~1,000 rows. That row count
+> is the node's real rewind window and belongs on the dashboard beside the cache
+> size. **Properly:** a one-line change — adding `|| v == stoa` to that guard —
+> gives Stoa the same margin as mainnet, and is the recommended fix.
+
 ### 6.5 The backup mechanism should compact first
 
 Today a backup captures all 9.3 GB, on the assumption that all of it is the
@@ -596,14 +625,33 @@ the fleet needs: answer historical state queries ("balance of X at height Y"),
 rewind further back than the retained cache depth, or prove its own history
 without replaying the archive.
 
-### 6.6 The one fleet-wide rule
+### 6.6 The one fleet-wide invariant
 
-**At least one node — the bootstrap — must keep everything.** If every node were
-compacted aggressively and the Chain Archive were later offloaded to Arweave,
-the network would have no local ground truth left: no node able to serve a
-genesis-up sync, and the archive and the backups would share a single point of
-failure. Designate one archival node, exempt it from the compaction worker, and
-keep its backups full.
+> **No node may have `--compact-rocksdb` applied while the fleet holds no
+> off-site archive.**
+
+That is the property that matters, and it is worth stating as an invariant
+rather than as a designated node, because the two are not equivalent.
+
+**Pact-only compaction needs no archive node.** With `--compact-rocksdb` never
+passed, full `rocksDb` on every node, `GcNone` and the unlimited SPV window, every
+node still holds the complete blockchain. Consensus is unaffected (Pact state is
+derived, and each node re-derives it from its own archive); serving catch-up to
+peers is unaffected (it reads RocksDB); SPV proof construction is unaffected (it
+needs payloads, not Pact history); and `/poll` is preserved as long as
+`--compact-transaction-index` stays off. The only fleet-wide losses are
+historical state queries and rewinding past the retained window — and **an
+abstaining node does not help with either**, because each node must rewind its
+own state and can replay its own archive to recover. So in that configuration a
+never-compact node is an optional convenience for forensics, not a safety
+requirement.
+
+**What does require an archive node** is the Arweave end-state, or anyone passing
+`--compact-rocksdb`. Either one takes block history off local disk, and then the
+fleet needs at least one node that still holds it — otherwise no node can serve
+a genesis-up sync, and the remote archive and the backups collapse into a single
+point of failure. Designate the bootstrap, exempt it from the compaction worker,
+and keep its backups full.
 
 ### 6.7 Summary for the Hub agent
 
@@ -613,7 +661,16 @@ keep its backups full.
 | 2 | Split "blockchain size" into Chain Archive (network figure) and State Cache (per-node mean, max, count over threshold) | display |
 | 3 | Build a compaction worker triggered at 1 GB of `0/sqlite`, assembling archive + compacted cache | the main build |
 | 4 | Change backup to compact first; expect ~9.3 GB → ~4.7 GB | small |
-| 5 | Never pass `--compact-rocksdb`; exempt the bootstrap node from compaction | a guard rail |
+| 5 | Never pass `--compact-rocksdb` — the one invariant (§6.6) | a guard rail |
+| 6 | Treat `BlockHistory` row count as the node's rewind window; do not call a node healthy below ~1,000 (§6.4) | display + health check |
+
+The tool is not in the deployed node image, and is not built by the Dockerfile at
+all — `chainweb-build-cwtool` builds only `cwtools:exe:ea`. Shipping it is a
+separate `stoa-compact` image, pinned to the same tag as `stoa-node`, run as a
+one-off container against a snapshot. Three container-level gotchas apply: the
+source **cannot** be mounted `:ro` (SQLite opens it read-write), `--to` must not
+already exist (so mount the parent and name a non-existent child), and
+`0/rocksDb` must be hard-linked into the output by hand.
 
 ## 7. The roadmap
 
