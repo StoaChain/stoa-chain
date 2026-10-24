@@ -56,9 +56,14 @@ TAGS
 .envrc
 .planning*.bak
 
-# Confidential audit deliverables — never commit these
+# Generated documents. The Markdown in docs/stoa/ is the tracked source; the
+# .docx/.pdf are built from it (e.g. docs/stoa/build-storage-paper.py) and are
+# never committed. Keep these two patterns broad — they also cover the
+# confidential audit deliverables below.
 docs/stoa/*.docx
 docs/stoa/*.pdf
+
+# Confidential audit deliverables — never commit these
 docs/stoa/upstream-audit-findings.md
 docs/stoa/upstream-audit-plan.md
 docs/stoa/upstream-audit-report.md
